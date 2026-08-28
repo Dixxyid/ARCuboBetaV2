@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 
 /**
  * Finite State Machine (FSM) untuk Mengelola Mode AR Tracking & SLAM
