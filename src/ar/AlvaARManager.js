@@ -1,5 +1,5 @@
-import * as AlvaARModule from '../public/alva/alva_ar.js';
-import '../public/alva/alva_ar_three.js';
+import * as AlvaARModule from '../../public/alva/alva_ar.js';
+import '../../public/alva/alva_ar_three.js';
 
 /**
  * Pengelola Inisialisasi dan Interaksi AlvaAR (Markerless SLAM) berbasis ESM
