@@ -1,26 +1,23 @@
 import * as THREE from 'three';
+import { MindARThree } from 'mind-ar/dist/mindar-image-three.prod.js'; // Import langsung dari node_modules
 
 /**
- * Pengelola Lifecycle & Event MindAR Image Tracking (Mendukung Multi-Marker)
+ * Pengelola Lifecycle & Event MindAR Image Tracking (Multi-Marker)
  */
 export class MindARManager {
   constructor({ container, targetPath, targetCount = 2, onTargetFound, onTargetLost }) {
     this.container = container;
     this.targetPath = targetPath;
-    this.targetCount = targetCount; // Jumlah marker di dalam flashcards.mind
+    this.targetCount = targetCount;
     this.onTargetFound = onTargetFound;
     this.onTargetLost = onTargetLost;
     this.mindarThree = null;
-    this.anchors = []; // Menyimpan banyak anchor
+    this.anchors = [];
   }
 
   async init() {
-    if (!window.MINDAR || !window.MINDAR.IMAGE) {
-      console.error("[MindAR] Library MindAR tidak ditemukan di global scope.");
-      return;
-    }
-
-    this.mindarThree = new window.MINDAR.IMAGE.MindARThree({
+    // Inisialisasi MindAR menggunakan modul ES murni
+    this.mindarThree = new MindARThree({
       container: this.container,
       imageTargetSrc: this.targetPath,
       uiScanning: 'no',
@@ -29,13 +26,11 @@ export class MindARManager {
 
     const { scene, camera, renderer } = this.mindarThree;
 
-    // Inisialisasi Anchor secara berulang berdasarkan jumlah targetCount
     for (let i = 0; i < this.targetCount; i++) {
       const anchor = this.mindarThree.addAnchor(i);
       
       anchor.onTargetFound = () => {
         console.log(`[MindAR] Target Flashcard Index ${i} Terdeteksi`);
-        // Mengirimkan group anchor dan index marker yang terdeteksi
         if (this.onTargetFound) this.onTargetFound(anchor.group, i);
       };
 
