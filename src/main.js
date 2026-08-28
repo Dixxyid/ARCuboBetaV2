@@ -12,7 +12,7 @@ import { AlvaARManager } from './ar/AlvaARManager.js';
 import { HandoverManager } from './ar/HandoverManager.js';
 
 /**
- * Bootstrapper Utama WebAR Application
+ * Bootstrapper Utama WebAR Application (Mendukung Multi-Marker)
  */
 class AppBootstrapper {
   constructor() {
@@ -26,83 +26,98 @@ class AppBootstrapper {
 
     this.currentModelGroup = null;
     this.anchorGroup = null;
+    this.currentIndex = null; // Melacak index marker yang sedang aktif
   }
 
   async start() {
     console.log("[AstroAR] Menginisialisasi Aplikasi...");
 
-    // 1. Inisialisasi Alpine.js Store UI
     initUIStore();
 
-    // 2. Inisialisasi Core Three.js Scene
     this.sceneManager = new SceneManager('canvas-container');
     this.lightingManager = new LightingManager(this.sceneManager.scene);
     this.modelLoader = new ModelLoader();
 
-    // 3. Setup Finite State Machine
     this.arStateManager = new ARStateManager((newState) => {
       if (window.arUI) {
         window.arUI.setTrackingState(newState);
       }
     });
 
-    // 4. Inisialisasi Handover Manager
     this.handoverManager = new HandoverManager(this.sceneManager.scene, this.arStateManager);
 
-    // 5. Inisialisasi & Setup MindAR Image Tracking
+    // Inisialisasi MindAR dengan targetCount: 2 (Bumi dan Mars)
     this.mindARManager = new MindARManager({
       container: document.getElementById('canvas-container'),
       targetPath: '/targets/flashcards.mind',
-      onTargetFound: (anchorGroup) => this._onTargetFound(anchorGroup),
-      onTargetLost: () => this._onTargetLost()
+      targetCount: 2, 
+      onTargetFound: (anchorGroup, index) => this._onTargetFound(anchorGroup, index),
+      onTargetLost: (index) => this._onTargetLost(index)
     });
 
-    // 6. Inisialisasi AlvaAR (WASM SLAM)
+    // Inisialisasi AlvaAR (tanpa path wasm)
     this.alvaARManager = new AlvaARManager();
     await this.alvaARManager.init();
 
-    // 7. Muat Model 3D Planet Utama (Bumi) secara Asinkron
-    await this._loadDefaultCelestialModel();
-
-    // 8. Jalankan Render Loop & Mulai Tracking Kamera
     this._startRenderLoop();
     await this.mindARManager.start();
 
-    // Bind instance ke window untuk akses global (misal: tombol reset)
     window.arAppBootstrapper = this;
     console.log("[AstroAR] Aplikasi WebAR Siap Digunakan!");
   }
 
-  async _loadDefaultCelestialModel() {
+  /**
+   * Memuat data dan model planet berdasarkan urutan Index
+   */
+  async _loadCelestialModelByIndex(index) {
+    // 1. Bersihkan model lama agar GPU tidak kehabisan memori
+    if (this.currentModelGroup) {
+      this.modelLoader.disposeModel(this.currentModelGroup);
+      this.currentModelGroup = null;
+    }
+
     try {
-      const data = celestialData.earth;
+      // 2. Pemetaan Index ke Dataset
+      let data;
+      if (index === 0) data = celestialData.earth;
+      else if (index === 1) data = celestialData.mars;
+      else return; // Jika index tidak dikenali, batalkan
+
+      // 3. Muat Model GLB baru
       const model = await this.modelLoader.loadModel(data.modelPath);
-      
-      // Atur Skala & Orientasi Model
       model.scale.set(0.5, 0.5, 0.5);
 
       this.currentModelGroup = new THREE.Group();
       this.currentModelGroup.add(model);
 
+      // 4. Perbarui Informasi di UI (Alpine.js)
       if (window.arUI) {
         window.arUI.setSelectedCelestial(data);
       }
     } catch (err) {
-      console.error("[AstroAR] Gagal mengunduh model 3D awal:", err);
+      console.error(`[AstroAR] Gagal mengunduh model 3D untuk index ${index}:`, err);
     }
   }
 
-  _onTargetFound(anchorGroup) {
+  async _onTargetFound(anchorGroup, index) {
     this.anchorGroup = anchorGroup;
+    
+    // Cegah muat ulang jika kartu yang discan masih sama
+    if (this.currentIndex !== index || !this.currentModelGroup) {
+      this.currentIndex = index;
+      await this._loadCelestialModelByIndex(index);
+    }
 
+    // Tempatkan model 3D di atas kartu
     if (this.currentModelGroup) {
       this.handoverManager.handoverToLocal(this.currentModelGroup, this.anchorGroup);
     }
   }
 
-  _onTargetLost() {
-    // Saat kartu tidak terdeteksi kamera, alihkan objek ke World Space (SLAM Mode)
-    if (this.currentModelGroup && this.arStateManager.getState() === ARSTATES.TRACKED) {
+  _onTargetLost(index) {
+    // Pastikan event kehilangan (lost) ini milik marker yang sedang aktif
+    if (this.currentModelGroup && this.currentIndex === index && this.arStateManager.getState() === ARSTATES.TRACKED) {
+      // Pindahkan koordinat planet ke World Coordinate (SLAM)
       this.handoverManager.handoverToWorld(this.currentModelGroup, this.anchorGroup);
     }
   }
@@ -117,20 +132,24 @@ class AppBootstrapper {
       this.alvaARManager.resetSLAM();
     }
 
+    this.currentIndex = null;
+    this.anchorGroup = null;
     this.arStateManager.setState(ARSTATES.SEARCHING);
-    this._loadDefaultCelestialModel();
+    
+    if (window.arUI) {
+       window.arUI.setSelectedCelestial(null);
+    }
   }
 
   _startRenderLoop() {
     const animate = () => {
       requestAnimationFrame(animate);
 
-      // Rotasi kontinu planet jika model aktif
+      // Rotasi planet berputar pada sumbunya
       if (this.currentModelGroup) {
         this.currentModelGroup.rotation.y += 0.005;
       }
 
-      // Render Three.js Scene
       this.sceneManager.render();
     };
 
@@ -138,7 +157,7 @@ class AppBootstrapper {
   }
 }
 
-// Bootstrap saat DOM siap
+// Menjalankan aplikasi ketika dokumen selesai dimuat
 document.addEventListener('DOMContentLoaded', () => {
   const app = new AppBootstrapper();
   app.start();
