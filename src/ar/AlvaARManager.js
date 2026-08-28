@@ -12,7 +12,6 @@ export class AlvaARManager {
 
   async init() {
     try {
-      // Menggunakan modul yang diimpor secara langsung
       const initializer = AlvaARModule.Initialize || AlvaARModule.default?.Initialize;
       
       if (initializer) {
