@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Astronomy WebAR Flashcards</title>
+  
+  <!-- CSS Styles -->
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <link rel="stylesheet" href="/src/styles/glassmorphism.css">
+  <link rel="stylesheet" href="/src/styles/hud.css">
+
+  <!-- Entry Point JavaScript -->
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body x-data="arApp">
+
+  <!-- 3D WebGL Canvas Layer -->
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay (HUD Layer) -->
+  <div class="hud-container">
+    
+    <!-- Header / Status Bar -->
+    <header class="hud-header glass-card">
+      <div class="brand">
+        <span class="dot-indicator" :class="trackingState.toLowerCase()"></span>
+        <h1 class="app-title">AstroAR</h1>
+      </div>
+      <div class="status-badge" x-text="trackingStatusText"></div>
+    </header>
+
+    <!-- Center Scanner Guide (Active when searching) -->
+    <template x-if="trackingState === 'SEARCHING'">
+      <div class="scanner-guide">
+        <div class="scanner-box">
+          <div class="corner top-left"></div>
+          <div class="corner top-right"></div>
+          <div class="corner bottom-left"></div>
+          <div class="corner bottom-right"></div>
+        </div>
+        <p class="guide-text">Arahkan kamera ke Flashcard Planet</p>
+      </div>
+    </template>
+
+    <!-- Bottom Action Controls -->
+    <footer class="hud-footer">
+      <template x-if="selectedCelestial">
+        <div class="action-bar">
+          <button @click="toggleDetailModal()" class="glass-button primary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Data Astronomi</span>
+          </button>
+          <button @click="resetView()" class="glass-button secondary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>Reset Pandangan</span>
+          </button>
+        </div>
+      </template>
+    </footer>
+
+    <!-- Detail Information Modal -->
+    <div class="modal-backdrop" x-show="showDetail" x-transition.opacity @click.self="showDetail = false" style="display: none;">
+      <div class="modal-card glass-modal">
+        <button class="modal-close" @click="showDetail = false">&times;</button>
+        
+        <div class="modal-header">
+          <span class="subtitle" x-text="selectedCelestial?.category || 'Objek Astronomi'"></span>
+          <h2 x-text="selectedCelestial?.name || 'Nama Celestial'"></h2>
+        </div>
+
+        <div class="modal-body">
+          <p class="description" x-text="selectedCelestial?.description"></p>
+
+          <!-- Technical Specs Matrix -->
+          <div class="specs-grid">
+            <div class="spec-item glass-inset">
+              <span class="label">Massa</span>
+              <span class="value" x-text="selectedCelestial?.mass || '-'"></span>
+            </div>
+            <div class="spec-item glass-inset">
+              <span class="label">Jari-Jari Rata-rata</span>
+              <span class="value" x-text="selectedCelestial?.radius || '-'"></span>
+            </div>
+            <div class="spec-item glass-inset">
+              <span class="label">Jarak dari Matahari</span>
+              <span class="value" x-text="selectedCelestial?.semiMajorAxis || '-'"></span>
+            </div>
+            <div class="spec-item glass-inset">
+              <span class="label">Suhu Permukaan</span>
+              <span class="value" x-text="selectedCelestial?.surfaceTemp || '-'"></span>
+            </div>
+          </div>
+
+          <!-- Scientific Reference Section -->
+          <template x-if="selectedCelestial?.doi">
+            <div class="doi-reference glass-inset">
+              <span class="doi-label">Rujukan Literatur Ilmiah (DOI):</span>
+              <a :href="'https://doi.org/' + selectedCelestial.doi" target="_blank" rel="noopener" class="doi-link" x-text="selectedCelestial.doi"></a>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
