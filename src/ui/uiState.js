@@ -23,12 +23,6 @@ export function initUIStore() {
       toggleDetailModal() {
         this.showDetail = !this.showDetail;
       }
-      
-        resetView() {
-      if (window.arAppBootstrapper) {
-        window.arAppBootstrapper.resetView();
-      }
-    }
     });
   });
 
