@@ -69,23 +69,7 @@ ar-flashcard-project/
 ├── 📄 vite.config.js              # Konfigurasi bundler Vite
 └── 📄 README.md                   # Dokumentasi resmi proyek
 
-🏗️ Catatan Arsitektur
-[!TIP]
-Separation of Concerns:
+🏗️ Catatan Arsitektur[!TIP]Separation of Concerns:Struktur direktori di atas dirancang dengan prinsip modularitas tinggi. Logika Augmented Reality, rendering Three.js, dan antarmuka UI dipisahkan secara tegas agar kode mudah dipelihara, diuji, dan di-debug.  Manajemen Aset Statis:Sangat disarankan untuk tidak mengubah letak file di dalam folder public/. Aset komputasi berat seperti biner .wasm (AlvaAR) dan model 3D .glb dikonfigurasi untuk melakukan pembacaan langsung (direct fetch / bypass bundler). Hal ini krusial demi menjaga stabilitas frame rate (FPS) dan mencegah masalah manajemen memori (memory leaks) pada perangkat peramban seluler.
+🎨 UI/UX DesignTema Visual: Futuristic Space & Glassmorphism[cite: 3]Gaya Antarmuka:Glassmorphism: Efek transparan berlapis dengan batas halus untuk tampilan modern.Translucency (Kaca Buram): Efek blur latar belakang agar teks UI tetap jelas di atas kamera seluler[cite: 3].Flat Design: Desain elemen tombol dan ikon yang bersih, simpel, dan responsif.Palet Warna:Ungu (#8A2BE2): Warna utama antarmuka berkesan futuristik dan nuansa antariksa.Biru (#00D2FF): Warna aksen interaktif, status koneksi, dan pemindaian AR.Kuning (#FFD700): Warna sorotan untuk tombol aksi utama dan informasi penting.Putih (#FFFFFF): Warna utama teks untuk keterbacaan tingkat tinggi di latar belakang dinamis.Tipografi (3 Font Kombinasi):Inter: Font UI utama untuk navigasi dan deskripsi singkat.Roboto: Font teknis untuk penulisan angka, data numerik, dan parameter AR.Montserrat: Font tegas untuk judul (heading) dan penamaan komponen.Flashcard Fisik:Kontras Tinggi (High-Feature Points)[cite: 3]Rasio Standar[cite: 3]
 
-Struktur direktori di atas dirancang dengan prinsip modularitas tinggi. Logika Augmented Reality, rendering Three.js, dan antarmuka UI dipisahkan secara tegas agar kode mudah dipelihara, diuji, dan di-debug.
-
-Manajemen Aset Statis:
-
-Sangat disarankan untuk tidak mengubah letak file di dalam folder public/. Aset komputasi berat seperti biner .wasm (AlvaAR) dan model 3D .glb dikonfigurasi untuk melakukan pembacaan langsung (direct fetch / bypass bundler). Hal ini krusial demi menjaga stabilitas frame rate (FPS) dan mencegah masalah manajemen memori (memory leaks) pada perangkat peramban seluler.
-
-🎨 Sistem & Pedoman Desain (UI/UX Design)
-Pendekatan visual aplikasi ini mengusung tema Futuristic Space & Glassmorphism untuk memberikan kesan melayang, transparan, dan tidak menghalangi pandangan dunia nyata (camera feed) dari pengguna.
-
-Material Antarmuka (Translucency): Memanfaatkan efek kaca buram backdrop-filter: blur(12px) saturate(150%) dipadukan dengan latar belakang rgba(255, 255, 255, 0.08) untuk menciptakan panel yang menyatu secara alami dengan lingkungan sekitar.
-
-Palet Warna Aksen: Menggunakan Neon Cyan (#00f3ff) untuk indikator aktif, status pemindaian (scanning reticle), dan penekanan tombol (hover states).
-
-Tipografi UI: Sans-Serif Modern (Inter / System UI) dipilih secara khusus untuk memastikan keterbacaan (readability) tetap maksimal di atas latar belakang kamera yang bergerak secara dinamis atau di bawah pencahayaan yang berubah-ubah.
-
-Integrasi Flashcard Fisik: Desain kartu dicetak menggunakan pola visual dengan tingkat kontras tinggi (high-feature points) berukuran rasio standar agar deteksi gambar (image tracking) oleh MindAR dapat berlangsung seketika tanpa jeda (zero-latency detection).
+(copyright arcubo 2026)
