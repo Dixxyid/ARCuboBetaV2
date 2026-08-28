@@ -5,19 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Astronomy WebAR Flashcards</title>
   
-  <!-- CSS Styles -->
+  <!-- CSS Styles (Gunakan path absolut) -->
   <link rel="stylesheet" href="/src/styles/main.css">
   <link rel="stylesheet" href="/src/styles/glassmorphism.css">
   <link rel="stylesheet" href="/src/styles/hud.css">
 
-  <!-- 1. MindAR Three.js Build CDN (Menyediakan window.MINDAR) -->
+  <!-- 1. Import Three.js dari CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- 2. Import MindAR dari CDN -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
 
-  <!-- AlvaAR Library -->
+  <!-- 3. AlvaAR JS (Pastikan nama file di GitHub Anda TIDAK ADA SPASI: alva_ar.js) -->
   <script src="/alva/alva_ar.js"></script>
   <script src="/alva/alva_ar_three.js"></script>
 
-  <!-- Entry Point JavaScript -->
+  <!-- Entry Point JavaScript Bootstrapper -->
   <script type="module" src="/src/main.js"></script>
 </head>
 <body x-data="arApp">
