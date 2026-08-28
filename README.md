@@ -34,14 +34,18 @@
 ar-flashcard-project/
 ├── 📂 public/                     # 🟡 ASET STATIS (Bypass Vite Bundler)
 │   ├── 📁 alva/
-│   │   └── 📄 alva_ar.wasm        # ⚙️ Binary WebAssembly AlvaAR SLAM
+│   │   ├── 📄 alva_ar.js          # ⚙️ Script utama AlvaAR (Markerless SLAM)
+│   │   └── 📄 alva_ar_three.js    # ⚙️ Wrapper AlvaAR untuk integrasi Three.js
 │   ├── 📁 models/
 │   │   ├── 📁 solar_system/       # 🪐 Objek 3D planet (.glb)
 │   │   │   ├── 📄 earth.glb
 │   │   │   └── 📄 mars.glb
 │   │   └── 📁 placeholders/
 │   ├── 📁 targets/
-│   │   └── 📄 flashcards.mind     # 🎯 Target kompilasi gambar MindAR
+│   │   ├── 📄 flashcards.mind     # 🎯 Target kompilasi gambar MindAR
+│   │   └── 📂 raw_images/         # 🗄️ (Opsional) Arsip gambar PNG flashcard mentah
+│   │       ├── 📄 0_earth_card.png
+│   │       └── 📄 1_mars_card.png
 │   └── 📁 materials/
 │       └── 📄 pp_dev.webp         # 👤 Foto profil pengembang
 │
