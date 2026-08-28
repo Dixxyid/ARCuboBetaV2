@@ -47,9 +47,10 @@ class AppBootstrapper {
     this.handoverManager = new HandoverManager(this.sceneManager.scene, this.arStateManager);
 
     // Inisialisasi MindAR dengan targetCount: 2 (Bumi dan Mars)
+    // PERBAIKAN: Gunakan path relatif './' agar sesuai dengan sub-path GitHub Pages
     this.mindARManager = new MindARManager({
       container: document.getElementById('canvas-container'),
-      targetPath: '/targets/flashcards.mind',
+      targetPath: './targets/flashcards.mind',
       targetCount: 2, 
       onTargetFound: (anchorGroup, index) => this._onTargetFound(anchorGroup, index),
       onTargetLost: (index) => this._onTargetLost(index)
@@ -83,8 +84,9 @@ class AppBootstrapper {
       else if (index === 1) data = celestialData.mars;
       else return; // Jika index tidak dikenali, batalkan
 
-      // 3. Muat Model GLB baru
-      const model = await this.modelLoader.loadModel(data.modelPath);
+      // 3. Muat Model GLB baru (Sesuaikan path model dengan relative path jika perlu)
+      const modelPath = data.modelPath.startsWith('/') ? '.' + data.modelPath : data.modelPath;
+      const model = await this.modelLoader.loadModel(modelPath);
       model.scale.set(0.5, 0.5, 0.5);
 
       this.currentModelGroup = new THREE.Group();
