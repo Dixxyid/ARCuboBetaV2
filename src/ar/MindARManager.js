@@ -1,16 +1,17 @@
 import * as THREE from 'three';
 
 /**
- * Pengelola Lifecycle & Event MindAR Image Tracking
+ * Pengelola Lifecycle & Event MindAR Image Tracking (Mendukung Multi-Marker)
  */
 export class MindARManager {
-  constructor({ container, targetPath, onTargetFound, onTargetLost }) {
+  constructor({ container, targetPath, targetCount = 2, onTargetFound, onTargetLost }) {
     this.container = container;
     this.targetPath = targetPath;
+    this.targetCount = targetCount; // Jumlah marker di dalam flashcards.mind
     this.onTargetFound = onTargetFound;
     this.onTargetLost = onTargetLost;
     this.mindarThree = null;
-    this.anchor = null;
+    this.anchors = []; // Menyimpan banyak anchor
   }
 
   async init() {
@@ -26,24 +27,27 @@ export class MindARManager {
       uiLoading: 'no'
     });
 
-    // Anchor index 0 untuk target flashcard utama
-    this.anchor = this.mindarThree.addAnchor(0);
+    const { scene, camera, renderer } = this.mindarThree;
 
-    this.anchor.onTargetFound = () => {
-      console.log("[MindAR] Target Flashcard Terdeteksi");
-      if (this.onTargetFound) this.onTargetFound(this.anchor.group);
-    };
+    // Inisialisasi Anchor secara berulang berdasarkan jumlah targetCount
+    for (let i = 0; i < this.targetCount; i++) {
+      const anchor = this.mindarThree.addAnchor(i);
+      
+      anchor.onTargetFound = () => {
+        console.log(`[MindAR] Target Flashcard Index ${i} Terdeteksi`);
+        // Mengirimkan group anchor dan index marker yang terdeteksi
+        if (this.onTargetFound) this.onTargetFound(anchor.group, i);
+      };
 
-    this.anchor.onTargetLost = () => {
-      console.log("[MindAR] Target Flashcard Hilang");
-      if (this.onTargetLost) this.onTargetLost();
-    };
+      anchor.onTargetLost = () => {
+        console.log(`[MindAR] Target Flashcard Index ${i} Hilang`);
+        if (this.onTargetLost) this.onTargetLost(i);
+      };
 
-    return { 
-      scene: this.mindarThree.scene, 
-      camera: this.mindarThree.camera, 
-      renderer: this.mindarThree.renderer 
-    };
+      this.anchors.push(anchor);
+    }
+
+    return { scene, camera, renderer };
   }
 
   async start() {
