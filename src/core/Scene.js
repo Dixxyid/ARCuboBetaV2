@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 /**
  * Manajer Utama Three.js Canvas, Camera, dan WebGLRenderer
  */
