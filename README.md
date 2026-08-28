@@ -68,8 +68,48 @@ ar-flashcard-project/
 ├── 📄 package.json                # Dependensi proyek (Three.js, MindAR, Alpine.js)
 ├── 📄 vite.config.js              # Konfigurasi bundler Vite
 └── 📄 README.md                   # Dokumentasi resmi proyek
+```
+---
 
-## 🏗️ Catatan Arsitektur[!TIP]Separation of Concerns:Struktur direktori di atas dirancang dengan prinsip modularitas tinggi. Logika Augmented Reality, rendering Three.js, dan antarmuka UI dipisahkan secara tegas agar kode mudah dipelihara, diuji, dan di-debug.  Manajemen Aset Statis:Sangat disarankan untuk tidak mengubah letak file di dalam folder public/. Aset komputasi berat seperti biner .wasm (AlvaAR) dan model 3D .glb dikonfigurasi untuk melakukan pembacaan langsung (direct fetch / bypass bundler). Hal ini krusial demi menjaga stabilitas frame rate (FPS) dan mencegah masalah manajemen memori (memory leaks) pada perangkat peramban seluler.
-## 🎨 UI/UX DesignTema Visual: Futuristic Space & Glassmorphism[cite: 3]Gaya Antarmuka:Glassmorphism: Efek transparan berlapis dengan batas halus untuk tampilan modern.Translucency (Kaca Buram): Efek blur latar belakang agar teks UI tetap jelas di atas kamera seluler[cite: 3].Flat Design: Desain elemen tombol dan ikon yang bersih, simpel, dan responsif.Palet Warna:Ungu (#8A2BE2): Warna utama antarmuka berkesan futuristik dan nuansa antariksa.Biru (#00D2FF): Warna aksen interaktif, status koneksi, dan pemindaian AR.Kuning (#FFD700): Warna sorotan untuk tombol aksi utama dan informasi penting.Putih (#FFFFFF): Warna utama teks untuk keterbacaan tingkat tinggi di latar belakang dinamis.Tipografi (3 Font Kombinasi):Inter: Font UI utama untuk navigasi dan deskripsi singkat.Roboto: Font teknis untuk penulisan angka, data numerik, dan parameter AR.Montserrat: Font tegas untuk judul (heading) dan penamaan komponen.Flashcard Fisik:Kontras Tinggi (High-Feature Points)[cite: 3]Rasio Standar[cite: 3]
+## 🏗️ Catatan Arsitektur
 
-(copyright arcubo 2026)
+> [!TIP]
+> **Separation of Concerns:**
+> Struktur direktori di atas dirancang dengan prinsip modularitas tinggi. Logika Augmented Reality, rendering Three.js, dan antarmuka UI dipisahkan secara tegas agar kode mudah dipelihara, diuji, dan di-debug.
+>
+> **Manajemen Aset Statis:**
+> Sangat disarankan untuk tidak mengubah letak file di dalam folder `public/`. Aset komputasi berat seperti biner `.wasm` (AlvaAR) dan model 3D `.glb` dikonfigurasi untuk melakukan pembacaan langsung (*direct fetch* / *bypass bundler*). Hal ini krusial demi menjaga stabilitas *frame rate* (FPS) dan mencegah masalah manajemen memori (*memory leaks*) pada perangkat peramban seluler.
+
+---
+
+## 🎨 UI/UX Design
+
+### 🌌 Tema Visual
+**Futuristic Space & Glassmorphism**
+
+### 🖥️ Gaya Antarmuka
+- 🪞 **Glassmorphism:** Efek transparan berlapis dengan batas halus untuk tampilan modern.
+- 🌫️ **Translucency (Kaca Buram):** Efek blur latar belakang agar teks UI tetap jelas di atas kamera seluler.
+- 📱 **Flat Design:** Desain elemen tombol dan ikon yang bersih, simpel, dan responsif.
+
+### 🎨 Palet Warna
+- 🟣 **Ungu (`#8A2BE2`):** Warna utama antarmuka berkesan futuristik dan nuansa antariksa.
+- 🔵 **Biru (`#00D2FF`):** Warna aksen interaktif, status koneksi, dan pemindaian AR.
+- 🟡 **Kuning (`#FFD700`):** Warna sorotan untuk tombol aksi utama dan informasi penting.
+- ⚪ **Putih (`#FFFFFF`):** Warna utama teks untuk keterbacaan tingkat tinggi di latar belakang dinamis.
+
+### 🔤 Tipografi (3 Font Kombinasi)
+- **Inter:** Font UI utama untuk navigasi dan deskripsi singkat.
+- **Roboto:** Font teknis untuk penulisan angka, data numerik, dan parameter AR.
+- **Montserrat:** Font tegas untuk judul (*heading*) dan penamaan komponen.
+
+### 🎴 Flashcard Fisik
+- **Kontras Tinggi** (*High-Feature Points*)
+- **Rasio Standar**
+
+---
+
+# 📚 Dokumentasi Proyek
+<p align="center">
+  &copy; 2026 Arcubo. All Rights Reserved.
+</p>
