@@ -58,7 +58,7 @@ class AppBootstrapper {
     });
 
     // 6. Inisialisasi AlvaAR (WASM SLAM)
-    this.alvaARManager = new AlvaARManager('/alva/alva_ar.wasm');
+    this.alvaARManager = new AlvaARManager();
     await this.alvaARManager.init();
 
     // 7. Muat Model 3D Planet Utama (Bumi) secara Asinkron
