@@ -68,3 +68,24 @@ ar-flashcard-project/
 ├── 📄 package.json                # Dependensi proyek (Three.js, MindAR, Alpine.js)
 ├── 📄 vite.config.js              # Konfigurasi bundler Vite
 └── 📄 README.md                   # Dokumentasi resmi proyek
+
+🏗️ Catatan Arsitektur
+[!TIP]
+Separation of Concerns:
+
+Struktur direktori di atas dirancang dengan prinsip modularitas tinggi. Logika Augmented Reality, rendering Three.js, dan antarmuka UI dipisahkan secara tegas agar kode mudah dipelihara, diuji, dan di-debug.
+
+Manajemen Aset Statis:
+
+Sangat disarankan untuk tidak mengubah letak file di dalam folder public/. Aset komputasi berat seperti biner .wasm (AlvaAR) dan model 3D .glb dikonfigurasi untuk melakukan pembacaan langsung (direct fetch / bypass bundler). Hal ini krusial demi menjaga stabilitas frame rate (FPS) dan mencegah masalah manajemen memori (memory leaks) pada perangkat peramban seluler.
+
+🎨 Sistem & Pedoman Desain (UI/UX Design)
+Pendekatan visual aplikasi ini mengusung tema Futuristic Space & Glassmorphism untuk memberikan kesan melayang, transparan, dan tidak menghalangi pandangan dunia nyata (camera feed) dari pengguna.
+
+Material Antarmuka (Translucency): Memanfaatkan efek kaca buram backdrop-filter: blur(12px) saturate(150%) dipadukan dengan latar belakang rgba(255, 255, 255, 0.08) untuk menciptakan panel yang menyatu secara alami dengan lingkungan sekitar.
+
+Palet Warna Aksen: Menggunakan Neon Cyan (#00f3ff) untuk indikator aktif, status pemindaian (scanning reticle), dan penekanan tombol (hover states).
+
+Tipografi UI: Sans-Serif Modern (Inter / System UI) dipilih secara khusus untuk memastikan keterbacaan (readability) tetap maksimal di atas latar belakang kamera yang bergerak secara dinamis atau di bawah pencahayaan yang berubah-ubah.
+
+Integrasi Flashcard Fisik: Desain kartu dicetak menggunakan pola visual dengan tingkat kontras tinggi (high-feature points) berukuran rasio standar agar deteksi gambar (image tracking) oleh MindAR dapat berlangsung seketika tanpa jeda (zero-latency detection).
