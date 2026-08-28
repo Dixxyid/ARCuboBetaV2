@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 /**
  * Manajer Pencahayaan PBR (Physically Based Rendering)
  */
