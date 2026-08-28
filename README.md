@@ -82,34 +82,39 @@ ar-flashcard-project/
 
 ---
 
-## 🎨 UI/UX Design
+# 🎨 Desain Sistem UI/UX ARCuboBetaV2
 
-### 🌌 Tema Visual
-**Futuristic Space & Glassmorphism**
+Dokument dan pedoman desain antarmuka (UI) dan pengalaman pengguna (UX) untuk platform **ARCuboBetaV2**.
 
-### 🖥️ Gaya Antarmuka
-- 🪞 **Glassmorphism:** Efek transparan berlapis dengan batas halus untuk tampilan modern.
-- 🌫️ **Translucency (Kaca Buram):** Efek blur latar belakang agar teks UI tetap jelas di atas kamera seluler.
-- 📱 **Flat Design:** Desain elemen tombol dan ikon yang bersih, simpel, dan responsif.
+## 🌌 Tema Visual
+> **Futuristic Space & Glassmorphism**
 
-### 🎨 Palet Warna
-- 🟣 **Ungu (`#8A2BE2`):** Warna utama antarmuka berkesan futuristik dan nuansa antariksa.
-- 🔵 **Biru (`#00D2FF`):** Warna aksen interaktif, status koneksi, dan pemindaian AR.
-- 🟡 **Kuning (`#FFD700`):** Warna sorotan untuk tombol aksi utama dan informasi penting.
-- ⚪ **Putih (`#FFFFFF`):** Warna utama teks untuk keterbacaan tingkat tinggi di latar belakang dinamis.
+## 🖥️ Gaya Antarmuka (Interface Style)
+| Elemen | Karakteristik | Deskripsi |
+| :--- | :--- | :--- |
+| 🪞 | **Glassmorphism** | Efek transparan berlapis dengan batas halus untuk tampilan modern. |
+| 🌫️ | **Translucency** | Efek *blur* (kaca buram) pada latar belakang agar teks UI tetap jelas di atas kamera seluler. |
+| 📱 | **Flat Design** | Desain elemen tombol dan ikon yang bersih, simpel, dan responsif. |
 
-### 🔤 Tipografi (3 Font Kombinasi)
-- **Inter:** Font UI utama untuk navigasi dan deskripsi singkat.
-- **Roboto:** Font teknis untuk penulisan angka, data numerik, dan parameter AR.
-- **Montserrat:** Font tegas untuk judul (*heading*) dan penamaan komponen.
+## 🎨 Palet Warna
+| Preview | Hex Code | Nama & Penggunaan |
+| :---: | :--- | :--- |
+| 🟪 | `#8A2BE2` | **Ungu**: Warna utama antarmuka berkesan futuristik dan nuansa antariksa. |
+| 🟦 | `#00D2FF` | **Biru**: Warna aksen interaktif, status koneksi, dan pemindaian AR. |
+| 🟨 | `#FFD700` | **Kuning**: Warna sorotan untuk tombol aksi utama dan informasi penting. |
+| ⬜ | `#FFFFFF` | **Putih**: Warna teks utama untuk tingkat keterbacaan tinggi di latar belakang dinamis. |
 
-### 🎴 Flashcard Fisik
-- **Kontras Tinggi** (*High-Feature Points*)
-- **Rasio Standar**
+## 🔤 Tipografi (Kombinasi 3 Font)
+* **`Inter`** — Font UI utama untuk navigasi dan deskripsi singkat.
+* **`Roboto`** — Font teknis untuk penulisan angka, data numerik, dan parameter AR.
+* **`Montserrat`** — Font tegas untuk judul (*heading*) dan penamaan komponen.
+
+## 🎴 Standar Flashcard Fisik
+* 📐 **Rasio Standar**: Mempertahankan proporsi standar kartu fisik.
+* ✨ **Kontras Tinggi** (*High-Feature Points*): Mengoptimalkan pelacakan dan deteksi titik fitur (*feature points*) pada kamera AR.
 
 ---
 
-# 📚 Dokumentasi Proyek
 <p align="center">
   &copy; 2026 Arcubo. All Rights Reserved.
 </p>
