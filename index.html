@@ -5,29 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Astronomy WebAR Flashcards</title>
   
-  <!-- CSS Styles (Gunakan path absolut) -->
   <link rel="stylesheet" href="./src/styles/main.css">
   <link rel="stylesheet" href="./src/styles/glassmorphism.css">
   <link rel="stylesheet" href="./src/styles/hud.css">
 
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.16.3/dist/cdn.min.js"></script>
+  <!-- IMPORT MAP YANG DISEMPURNAKAN -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "alpinejs": "https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js",
+        "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+      }
+    }
+  </script>
 
-<!-- IMPORT MAP: Peta modul agar browser bisa membaca import tanpa bundler -->
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-    "mindar-image-three":"https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
-  }
-}
-</script>
+  <!-- UBAH JADI TYPE="MODULE" KARENA ALVAAR MENGGUNAKAN EXPORT/IMPORT.META -->
+  <script type="module" src="./public/alva/alva_ar.js"></script>
+  <script type="module" src="./public/alva/alva_ar_three.js"></script>
 
-  <!-- 3. AlvaAR JS (Pastikan nama file di GitHub Anda TIDAK ADA SPASI: alva_ar.js) -->
-  <script src="./public/alva/alva_ar.js"></script>
-  <script src="./public/alva/alva_ar_three.js"></script>
-
-  <!-- Entry Point JavaScript Bootstrapper -->
   <script type="module" src="./src/main.js"></script>
 </head>
 <body x-data="arApp">
