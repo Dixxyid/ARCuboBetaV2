@@ -1,5 +1,5 @@
 /**
- * Pengelola Inisialisasi dan Interaksi AlvaAR (Markerless SLAM)
+ * Pengelola Inisialisasi dan Interaksi AlvaAR (Markerless SLAM) dengan Penanganan Async Load
  */
 export class AlvaARManager {
   constructor() {
@@ -7,25 +7,34 @@ export class AlvaARManager {
     this.isInitialized = false;
   }
 
+  // Fungsi pembantu untuk menunggu window.AlvaAR tersedia
+  async _waitForAlva(timeout = 10000) {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      if (window.AlvaAR) {
+        return window.AlvaAR;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100)); // Cek setiap 100ms
+    }
+    throw new Error("Timeout: Gagal memuat library AlvaAR secara global.");
+  }
+
   async init() {
     try {
-      // Memeriksa ketersediaan objek global AlvaAR yang dimuat via modul
-      if (window.AlvaAR) {
-        // Bergantung pada implementasi pembungkus AlvaAR Anda
-        this.alvaInstance = await window.AlvaAR.Initialize ? window.AlvaAR.Initialize() : window.AlvaAR;
-        this.isInitialized = true;
-        console.log("[AlvaAR] Engine Berhasil Diinisialisasi");
-      } else {
-        console.warn("[AlvaAR] Objek window.AlvaAR belum tersedia secara global.");
-      }
+      // Menunggu hingga skrip AlvaAR selesai dimuat oleh browser
+      const AlvaARLib = await this._waitForAlva();
+
+      this.alvaInstance = typeof AlvaARLib.Initialize === 'function' 
+        ? await AlvaARLib.Initialize() 
+        : AlvaARLib;
+        
+      this.isInitialized = true;
+      console.log("[AlvaAR] Engine Berhasil Diinisialisasi");
     } catch (error) {
       console.error("[AlvaAR] Gagal menginisialisasi engine SLAM:", error);
     }
   }
 
-  /**
-   * Memproses frame kamera untuk mendapati matriks pose saat SLAM aktif
-   */
   processFrame(frameData) {
     if (!this.isInitialized || !this.alvaInstance) return null;
     
@@ -40,9 +49,6 @@ export class AlvaARManager {
     }
   }
 
-  /**
-   * Mengatur ulang posisi tracking SLAM
-   */
   resetSLAM() {
     if (this.alvaInstance && typeof this.alvaInstance.reset === 'function') {
       this.alvaInstance.reset();
