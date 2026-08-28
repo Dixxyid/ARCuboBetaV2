@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 /**
  * Pengelola Lifecycle & Runtime AlvaAR (Markerless SLAM)
  */
