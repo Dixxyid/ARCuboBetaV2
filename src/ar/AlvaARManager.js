@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 
 /**
- * Pengelola Lifecycle & Runtime WASM AlvaAR (Markerless SLAM)
+ * Pengelola Lifecycle & Runtime AlvaAR (Markerless SLAM)
  */
 export class AlvaARManager {
-  constructor(wasmPath = '/alva/alva_ar.wasm') {
-    this.wasmPath = wasmPath;
+  constructor() {
     this.alvaInstance = null;
     this.isInitialized = false;
   }
@@ -13,14 +12,16 @@ export class AlvaARManager {
   async init() {
     try {
       if (window.AlvaAR) {
-        this.alvaInstance = await window.AlvaAR.Initialize(this.wasmPath);
+        // Inisialisasi AlvaAR menggunakan script JS yang dimuat secara global
+        this.alvaInstance = await window.AlvaAR.Initialize();
         this.isInitialized = true;
-        console.log("[AlvaAR] WASM Engine Berhasil Diinisialisasi");
+        console.log("[AlvaAR] Engine Berhasil Diinisialisasi");
       } else {
-        console.warn("[AlvaAR] Class Global AlvaAR belum dimuat.");
+        console.warn("[AlvaAR] Class Global AlvaAR belum dimuat di window context.");
       }
     } catch (error) {
-      console.error("[AlvaAR] Gagal menginisialisasi WASM AlvaAR:", error);
+      console.error("[AlvaAR] Gagal menginisialisasi AlvaAR:", error);
+      this.isInitialized = false;
     }
   }
 
@@ -31,8 +32,14 @@ export class AlvaARManager {
    */
   processFrame(frameData) {
     if (!this.isInitialized || !this.alvaInstance) return null;
-    const poseMatrix = this.alvaInstance.findCameraPose(frameData);
-    return poseMatrix || null;
+
+    try {
+      const poseMatrix = this.alvaInstance.findCameraPose(frameData);
+      return poseMatrix || null;
+    } catch (error) {
+      console.error("[AlvaAR] Gagal memproses frame kamera:", error);
+      return null;
+    }
   }
 
   resetSLAM() {
