@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import Alpine from 'alpinejs';
 
 import { initUIStore } from './ui/uiState.js';
