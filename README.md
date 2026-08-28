@@ -11,11 +11,13 @@
 
 ## 🚀 Tech Stack
 
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white)
 ![Three.js](https://img.shields.io/badge/Three.js-000000?style=flat-square&logo=three.js&logoColor=white)
 ![Alpine.js](https://img.shields.io/badge/Alpine.js-8BC0D0?style=flat-square&logo=alpine.js&logoColor=black)
 ![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?style=flat-square&logo=webassembly&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
 
 ---
 
@@ -89,7 +91,7 @@ Dokument dan pedoman desain antarmuka (UI) dan pengalaman pengguna (UX) untuk pl
 ## 🌌 Tema Visual
 > **Futuristic Space & Glassmorphism**
 
-## 🖥️ Gaya Antarmuka (Interface Style)
+## 🖥️ Gaya Antarmuka 
 | Elemen | Karakteristik | Deskripsi |
 | :--- | :--- | :--- |
 | 🪞 | **Glassmorphism** | Efek transparan berlapis dengan batas halus untuk tampilan modern. |
@@ -104,7 +106,7 @@ Dokument dan pedoman desain antarmuka (UI) dan pengalaman pengguna (UX) untuk pl
 | 🟨 | `#FFD700` | **Kuning**: Warna sorotan untuk tombol aksi utama dan informasi penting. |
 | ⬜ | `#FFFFFF` | **Putih**: Warna teks utama untuk tingkat keterbacaan tinggi di latar belakang dinamis. |
 
-## 🔤 Tipografi (Kombinasi 3 Font)
+## 🔤 Tipografi
 * **`Inter`** — Font UI utama untuk navigasi dan deskripsi singkat.
 * **`Roboto`** — Font teknis untuk penulisan angka, data numerik, dan parameter AR.
 * **`Montserrat`** — Font tegas untuk judul (*heading*) dan penamaan komponen.
