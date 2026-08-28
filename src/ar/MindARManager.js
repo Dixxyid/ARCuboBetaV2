@@ -1,6 +1,3 @@
-import * as THREE from 'three';
-import { MindARThree } from 'mind-ar/dist/mindar-image-three.prod.js'; // Import langsung dari node_modules
-
 /**
  * Pengelola Lifecycle & Event MindAR Image Tracking (Multi-Marker)
  */
