@@ -1,51 +1,38 @@
-import Alpine from 'alpinejs';
-import { ARSTATES } from '../ar/ARState.js';
+// Jika menggunakan CDN cdn.min.js, Alpine otomatis terdaftar ke window.Alpine
+const Alpine = window.Alpine;
 
-/**
- * Inisialisasi dan Manajer Store Reaktif Alpine.js
- */
 export function initUIStore() {
-  Alpine.data('arApp', () => ({
-    trackingState: ARSTATES.SEARCHING,
-    selectedCelestial: null,
-    showDetail: false,
+  document.addEventListener('alpine:init', () => {
+    Alpine.store('arApp', {
+      trackingState: 'SEARCHING',
+      trackingStatusText: 'Mencari Target...',
+      selectedCelestial: null,
+      showDetail: false,
 
-    init() {
-      // Expose instance Alpine ke window agar bisa diakses dari main bootstrapper
-      window.arUI = this;
-    },
+      setTrackingState(state) {
+        this.trackingState = state;
+        if (state === 'SEARCHING') this.trackingStatusText = 'Mencari Target...';
+        else if (state === 'TRACKED') this.trackingStatusText = 'Target Terdeteksi';
+        else if (state === 'SLAM') this.trackingStatusText = 'Mode SLAM Aktif';
+      },
 
-    get trackingStatusText() {
-      switch (this.trackingState) {
-        case ARSTATES.SEARCHING:
-          return 'Mencari Target...';
-        case ARSTATES.TRACKED:
-          return 'Kartu Terdeteksi';
-        case ARSTATES.SLAM:
-          return 'Mode Dunia (SLAM Active)';
-        default:
-          return 'Menyiapkan AR...';
+      setSelectedCelestial(celestial) {
+        this.selectedCelestial = celestial;
+      },
+
+      toggleDetailModal() {
+        this.showDetail = !this.showDetail;
       }
-    },
-
-    setTrackingState(state) {
-      this.trackingState = state;
-    },
-
-    setSelectedCelestial(data) {
-      this.selectedCelestial = data;
-    },
-
-    toggleDetailModal() {
-      this.showDetail = !this.showDetail;
-    },
-
-    resetView() {
+      
+        resetView() {
       if (window.arAppBootstrapper) {
         window.arAppBootstrapper.resetView();
       }
     }
-  }));
+    });
+  });
 
-  Alpine.start();
+  if (!window.Alpine && Alpine) {
+    window.Alpine = Alpine;
+  }
 }
