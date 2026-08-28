@@ -1,5 +1,8 @@
+import * as AlvaARModule from '../../alva/alva_ar.js';
+import '../../alva/alva_ar_three.js';
+
 /**
- * Pengelola Inisialisasi dan Interaksi AlvaAR (Markerless SLAM) dengan Penanganan Async Load
+ * Pengelola Inisialisasi dan Interaksi AlvaAR (Markerless SLAM) berbasis ESM
  */
 export class AlvaARManager {
   constructor() {
@@ -7,29 +10,19 @@ export class AlvaARManager {
     this.isInitialized = false;
   }
 
-  // Fungsi pembantu untuk menunggu window.AlvaAR tersedia
-  async _waitForAlva(timeout = 10000) {
-    const startTime = Date.now();
-    while (Date.now() - startTime < timeout) {
-      if (window.AlvaAR) {
-        return window.AlvaAR;
-      }
-      await new Promise(resolve => setTimeout(resolve, 100)); // Cek setiap 100ms
-    }
-    throw new Error("Timeout: Gagal memuat library AlvaAR secara global.");
-  }
-
   async init() {
     try {
-      // Menunggu hingga skrip AlvaAR selesai dimuat oleh browser
-      const AlvaARLib = await this._waitForAlva();
+      // Menggunakan modul yang diimpor secara langsung
+      const initializer = AlvaARModule.Initialize || AlvaARModule.default?.Initialize;
+      
+      if (initializer) {
+        this.alvaInstance = await initializer();
+      } else {
+        this.alvaInstance = AlvaARModule;
+      }
 
-      this.alvaInstance = typeof AlvaARLib.Initialize === 'function' 
-        ? await AlvaARLib.Initialize() 
-        : AlvaARLib;
-        
       this.isInitialized = true;
-      console.log("[AlvaAR] Engine Berhasil Diinisialisasi");
+      console.log("[AlvaAR] Engine Berhasil Diinisialisasi via Modul");
     } catch (error) {
       console.error("[AlvaAR] Gagal menginisialisasi engine SLAM:", error);
     }
