@@ -1,3 +1,6 @@
+import * as THREE from 'three';
+import { MindARThree } from 'mindar-image-three';
+
 /**
  * Pengelola Lifecycle & Event MindAR Image Tracking (Multi-Marker)
  */
