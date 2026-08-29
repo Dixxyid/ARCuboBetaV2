@@ -99,6 +99,11 @@ class AppBootstrapper {
       const model = await this.modelLoader.loadModel(modelPath);
       model.scale.set(0.5, 0.5, 0.5);
 
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      console.log('[DEBUG] Ukuran model setelah scale:', size);
+
       this.currentModelGroup = new THREE.Group();
       this.currentModelGroup.add(model);
 
