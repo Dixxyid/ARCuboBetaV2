@@ -12,7 +12,7 @@ export const celestialData = {
     radius: "6,371 km",
     semiMajorAxis: "1.000 AU (149.6 juta km)",
     surfaceTemp: "288 K (15 °C)",
-    modelPath: "/models/solar_system/earth.glb",
+    modelPath: "/public/models/solar_system/earth.glb",
     description: "Planet ketiga dari Matahari yang merupakan satu-satunya benda astronomi yang diketahui menampung kehidupan. Memiliki atmosfer kaya oksigen dan samudra air cair.",
     doi: "10.1038/s41586-020-2094-0"
   },
@@ -24,7 +24,7 @@ export const celestialData = {
     radius: "3,389.5 km",
     semiMajorAxis: "1.524 AU (227.9 juta km)",
     surfaceTemp: "210 K (-63 °C)",
-    modelPath: "/models/solar_system/mars.glb",
+    modelPath: "/public/models/solar_system/mars.glb",
     description: "Planet keempat dari Matahari dengan permukaan gurun berbatu yang kaya akan besi(III) oksida, memberikannya warna kemerahan yang khas.",
     doi: "10.1126/science.1246417"
   }
