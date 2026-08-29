@@ -40,7 +40,6 @@ export class ModelLoader {
   /**
    * Menormalisasi ukuran model apapun (kecil/besar/tidak diketahui) supaya
    * dimensi terbesarnya (bounding box) selalu sama dengan targetSize.
-   * Jadi tidak perlu tebak-tebak angka scale manual per model.
    *
    * @param {THREE.Object3D} model
    * @param {number} targetSize - ukuran akhir yang diinginkan (unit dunia MindAR, ~0.1-0.3 biasanya pas di atas marker)

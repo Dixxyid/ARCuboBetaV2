@@ -34,7 +34,7 @@ export class MindARManager {
         anchor.onTargetFound = () => {
           if (this.onTargetFound) this.onTargetFound(anchor.group, i);
         };
-        
+
         anchor.onTargetLost = () => {
           if (this.onTargetLost) this.onTargetLost(i);
         };
@@ -51,6 +51,12 @@ export class MindARManager {
     }
 
     await this.mindarThree.start();
+
+    // FIX UTAMA: MindAR tidak otomatis render scene-nya sendiri,
+    // wajib dipanggil manual seperti ini.
+    this.mindarThree.renderer.setAnimationLoop(() => {
+      this.mindarThree.renderer.render(this.mindarThree.scene, this.mindarThree.camera);
+    });
 
     // PERBAIKAN LAYAR HITAM: Memaksa video kamera agar full-screen dan berada di layer paling belakang
     const videoElement = this.mindarThree.video;
@@ -73,9 +79,9 @@ export class MindARManager {
       canvasElement.style.width = '100%';
       canvasElement.style.height = '100%';
       canvasElement.style.zIndex = '1';
-      
+
       // Mengatur ulang warna latar belakang renderer menjadi benar-benar transparan
-      this.mindarThree.renderer.setClearColor(0x000000, 0); 
+      this.mindarThree.renderer.setClearColor(0x000000, 0);
     }
   }
 
