@@ -38,6 +38,49 @@ export class ModelLoader {
   }
 
   /**
+   * Menormalisasi ukuran model apapun (kecil/besar/tidak diketahui) supaya
+   * dimensi terbesarnya (bounding box) selalu sama dengan targetSize.
+   * Jadi tidak perlu tebak-tebak angka scale manual per model.
+   *
+   * @param {THREE.Object3D} model
+   * @param {number} targetSize - ukuran akhir yang diinginkan (unit dunia MindAR, ~0.1-0.3 biasanya pas di atas marker)
+   * @returns {THREE.Object3D} model yang sama (sudah di-scale in-place)
+   */
+  normalizeScale(model, targetSize = 0.15) {
+    // 1. Reset scale dulu ke 1 supaya pengukuran bounding box akurat
+    model.scale.set(1, 1, 1);
+
+    // 2. Hitung bounding box asli model
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    // 3. Ambil dimensi terbesar (x/y/z) sebagai acuan, biar proporsi tetap terjaga
+    const maxDimension = Math.max(size.x, size.y, size.z);
+
+    if (maxDimension === 0 || !isFinite(maxDimension)) {
+      console.warn('[ModelLoader] Bounding box model tidak valid, skip normalisasi scale.');
+      return model;
+    }
+
+    // 4. Hitung faktor scale supaya maxDimension jadi persis targetSize
+    const scaleFactor = targetSize / maxDimension;
+    model.scale.setScalar(scaleFactor);
+
+    // 5. Pusatkan model & taruh alasnya di y=0, supaya tidak "melayang"/offset dari anchor
+    const centeredBox = new THREE.Box3().setFromObject(model);
+    const center = new THREE.Vector3();
+    centeredBox.getCenter(center);
+    model.position.x -= center.x;
+    model.position.z -= center.z;
+    model.position.y -= centeredBox.min.y;
+
+    console.log(`[ModelLoader] Auto-scale diterapkan. Dimensi asli maks: ${maxDimension.toFixed(3)}, scaleFactor: ${scaleFactor.toFixed(6)}, hasil akhir: ${targetSize}`);
+
+    return model;
+  }
+
+  /**
    * Pembersihan Memori GPU untuk cegah Memory Leak
    * @param {THREE.Object3D} object 
    */
