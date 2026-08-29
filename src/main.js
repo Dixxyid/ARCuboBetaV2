@@ -51,7 +51,7 @@ class AppBootstrapper {
     this.mindARManager = new MindARManager({
       container: document.getElementById('canvas-container'),
       targetPath: './public/targets/flashcards.mind',
-      targetCount: 2, 
+      targetCount: 2,
       onTargetFound: (anchorGroup, index) => this._onTargetFound(anchorGroup, index),
       onTargetLost: (index) => this._onTargetLost(index)
     });
@@ -62,6 +62,13 @@ class AppBootstrapper {
     // Inisialisasi AlvaAR (tanpa path wasm)
     this.alvaARManager = new AlvaARManager();
     await this.alvaARManager.init();
+
+    // FIX: tambahkan cahaya ke scene milik MindAR (tempat objek "TRACKED" hidup)
+    const mindarScene = this.mindARManager.mindarThree.scene;
+    const ambient = new THREE.AmbientLight(0xffffff, 1.0);
+    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
+    directional.position.set(0.5, 1, 0.3);
+    mindarScene.add(ambient, directional);
 
     this._startRenderLoop();
     await this.mindARManager.start();
@@ -106,7 +113,7 @@ class AppBootstrapper {
 
   async _onTargetFound(anchorGroup, index) {
     this.anchorGroup = anchorGroup;
-    
+
     // Cegah muat ulang jika kartu yang discan masih sama
     if (this.currentIndex !== index || !this.currentModelGroup) {
       this.currentIndex = index;
@@ -140,9 +147,9 @@ class AppBootstrapper {
     this.currentIndex = null;
     this.anchorGroup = null;
     this.arStateManager.setState(ARSTATES.SEARCHING);
-    
+
     if (window.arUI) {
-       window.arUI.setSelectedCelestial(null);
+      window.arUI.setSelectedCelestial(null);
     }
   }
 
