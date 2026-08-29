@@ -56,6 +56,9 @@ class AppBootstrapper {
       onTargetLost: (index) => this._onTargetLost(index)
     });
 
+    // >>> TAMBAHKAN BARIS INI: Wajib memanggil init() sebelum start() <<<
+    await this.mindARManager.init();
+
     // Inisialisasi AlvaAR (tanpa path wasm)
     this.alvaARManager = new AlvaARManager();
     await this.alvaARManager.init();
