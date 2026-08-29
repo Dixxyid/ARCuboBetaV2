@@ -50,7 +50,7 @@ class AppBootstrapper {
     // PERBAIKAN: Gunakan path relatif './' agar sesuai dengan sub-path GitHub Pages
     this.mindARManager = new MindARManager({
       container: document.getElementById('canvas-container'),
-      targetPath: './targets/flashcards.mind',
+      targetPath: './public/targets/flashcards.mind',
       targetCount: 2, 
       onTargetFound: (anchorGroup, index) => this._onTargetFound(anchorGroup, index),
       onTargetLost: (index) => this._onTargetLost(index)
