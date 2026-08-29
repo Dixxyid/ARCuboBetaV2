@@ -114,13 +114,21 @@ class AppBootstrapper {
   async _onTargetFound(anchorGroup, index) {
     this.anchorGroup = anchorGroup;
 
-    // Cegah muat ulang jika kartu yang discan masih sama
+    // ===== TES ISOLASI TOTAL — sementara, hapus setelah selesai debug =====
+    const testBox = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.2, 0.2),
+      new THREE.MeshBasicMaterial({ color: 0xff00ff }) // magenta, tidak butuh cahaya
+    );
+    testBox.position.set(0, 0.15, 0);
+    anchorGroup.add(testBox);
+    console.log('[TEST] Box magenta ditambahkan langsung ke anchorGroup:', anchorGroup);
+    // ===== akhir tes, kode asli di bawah tetap jalan seperti biasa =====
+
     if (this.currentIndex !== index || !this.currentModelGroup) {
       this.currentIndex = index;
       await this._loadCelestialModelByIndex(index);
     }
 
-    // Tempatkan model 3D di atas kartu
     if (this.currentModelGroup) {
       this.handoverManager.handoverToLocal(this.currentModelGroup, this.anchorGroup);
     }
