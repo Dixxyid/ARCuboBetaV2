@@ -97,7 +97,7 @@ class AppBootstrapper {
       // 3. Muat Model GLB baru (Sesuaikan path model dengan relative path jika perlu)
       const modelPath = data.modelPath.startsWith('/') ? '.' + data.modelPath : data.modelPath;
       const model = await this.modelLoader.loadModel(modelPath);
-      this.modelLoader.normalizeScale(model, 0.15);
+      this.modelLoader.normalizeScale(model, data.displaySize ?? 0.15); // Menggunakan displaySize dari data config (fallback 0.15)
 
       // FIX PERMANEN: render kedua sisi permukaan mesh,
       // karena model GLB ini punya winding order yang membuat
