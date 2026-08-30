@@ -23,6 +23,10 @@ export class MindARManager {
         container: this.container,
         imageTargetSrc: this.targetPath,
         maxTrack: 1, // Melacak satu kartu dalam satu waktu
+        filterMinCF: 0.0001,   // makin kecil = makin stabil, tapi sedikit lebih "lag" mengikuti gerakan
+        filterBeta: 0.001,     // makin kecil = makin halus (kurang responsif ke gerakan cepat)
+        warmupTolerance: 5,    // butuh 5 frame konsisten sebelum dianggap "found" (default biasanya lebih kecil)
+        missTolerance: 5,      // butuh 5 frame gagal berturut-turut baru dianggap "lost" (bukan 1 frame goyah langsung lost)
       });
 
       // Mendaftarkan anchor (titik jangkar) sesuai jumlah target marker
