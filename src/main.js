@@ -97,7 +97,17 @@ class AppBootstrapper {
       // 3. Muat Model GLB baru (Sesuaikan path model dengan relative path jika perlu)
       const modelPath = data.modelPath.startsWith('/') ? '.' + data.modelPath : data.modelPath;
       const model = await this.modelLoader.loadModel(modelPath);
-      this.modelLoader.normalizeScale(model, 0.15); // semua model otomatis jadi ~0.15 unit
+      this.modelLoader.normalizeScale(model, 0.15);
+
+      // FIX PERMANEN: render kedua sisi permukaan mesh,
+      // karena model GLB ini punya winding order yang membuat
+      // sisi luar ter-cull dari sudut pandang kamera normal.
+      model.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material.side = THREE.DoubleSide;
+          child.material.needsUpdate = true;
+        }
+      });
 
       this.currentModelGroup = new THREE.Group();
       this.currentModelGroup.add(model);
@@ -120,25 +130,6 @@ class AppBootstrapper {
     }
 
     if (this.currentModelGroup) {
-      // ===== TES DIAGNOSA MODEL GLB =====
-      this.currentModelGroup.traverse((child) => {
-        if (child.isMesh) {
-          console.log('[TEST] Mesh ditemukan:', child.name, {
-            visible: child.visible,
-            material: child.material,
-            hasTexture: !!child.material?.map,
-            opacity: child.material?.opacity,
-            transparent: child.material?.transparent,
-          });
-          // paksa double-side + opacity full, buat tes cepat
-          child.material.side = THREE.DoubleSide;
-          child.material.transparent = false;
-          child.material.opacity = 1;
-          child.material.needsUpdate = true;
-        }
-      });
-      // ===== akhir tes =====
-
       this.handoverManager.handoverToLocal(this.currentModelGroup, this.anchorGroup);
     }
   }
