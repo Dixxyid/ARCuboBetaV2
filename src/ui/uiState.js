@@ -1,13 +1,36 @@
-// Jika menggunakan CDN cdn.min.js, Alpine otomatis terdaftar ke window.Alpine
-const Alpine = window.Alpine;
+import Alpine from 'alpinejs';
 
 export function initUIStore() {
-  document.addEventListener('alpine:init', () => {
-    Alpine.store('arApp', {
+  const alpineInstance = window.Alpine || Alpine;
+  if (!window.Alpine) {
+    window.Alpine = alpineInstance;
+  }
+
+  const registerStore = () => {
+    const storeObj = {
       trackingState: 'SEARCHING',
       trackingStatusText: 'Mencari Target...',
       selectedCelestial: null,
       showDetail: false,
+
+      // ===== TAMBAHAN BARU =====
+      isLoadingModel: false,
+      loadError: null,
+
+      setLoadingModel(isLoading) {
+        this.isLoadingModel = isLoading;
+        if (isLoading) this.loadError = null; // reset error tiap kali mulai load baru
+      },
+
+      setLoadError(message) {
+        this.isLoadingModel = false;
+        this.loadError = message;
+      },
+
+      dismissError() {
+        this.loadError = null;
+      },
+      // ===== AKHIR TAMBAHAN =====
 
       setTrackingState(state) {
         this.trackingState = state;
@@ -23,10 +46,23 @@ export function initUIStore() {
       toggleDetailModal() {
         this.showDetail = !this.showDetail;
       }
-    });
-  });
+    };
 
-  if (!window.Alpine && Alpine) {
-    window.Alpine = Alpine;
+    if (alpineInstance.store) {
+      alpineInstance.store('arApp', storeObj);
+      window.arUI = alpineInstance.store('arApp');
+    }
+
+    if (alpineInstance.data) {
+      alpineInstance.data('arApp', () => (alpineInstance.store ? alpineInstance.store('arApp') : storeObj));
+    }
+  };
+
+  registerStore();
+  document.addEventListener('alpine:init', registerStore);
+
+  if (!window.__alpineStarted && alpineInstance.start) {
+    alpineInstance.start();
+    window.__alpineStarted = true;
   }
 }

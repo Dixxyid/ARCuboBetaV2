@@ -81,27 +81,24 @@ class AppBootstrapper {
    * Memuat data dan model planet berdasarkan urutan Index
    */
   async _loadCelestialModelByIndex(index) {
-    // 1. Bersihkan model lama agar GPU tidak kehabisan memori
     if (this.currentModelGroup) {
       this.modelLoader.disposeModel(this.currentModelGroup);
       this.currentModelGroup = null;
     }
 
+    // TAMBAHAN: mulai loading
+    if (window.arUI) window.arUI.setLoadingModel(true);
+
     try {
-      // 2. Pemetaan Index ke Dataset
       let data;
       if (index === 0) data = celestialData.earth;
       else if (index === 1) data = celestialData.mars;
-      else return; // Jika index tidak dikenali, batalkan
+      else return;
 
-      // 3. Muat Model GLB baru (Sesuaikan path model dengan relative path jika perlu)
       const modelPath = data.modelPath.startsWith('/') ? '.' + data.modelPath : data.modelPath;
       const model = await this.modelLoader.loadModel(modelPath);
-      this.modelLoader.normalizeScale(model, data.displaySize ?? 0.15); // Menggunakan displaySize dari data config (fallback 0.15)
+      this.modelLoader.normalizeScale(model, data.displaySize ?? 0.15);
 
-      // FIX PERMANEN: render kedua sisi permukaan mesh,
-      // karena model GLB ini punya winding order yang membuat
-      // sisi luar ter-cull dari sudut pandang kamera normal.
       model.traverse((child) => {
         if (child.isMesh && child.material) {
           child.material.side = THREE.DoubleSide;
@@ -112,12 +109,16 @@ class AppBootstrapper {
       this.currentModelGroup = new THREE.Group();
       this.currentModelGroup.add(model);
 
-      // 4. Perbarui Informasi di UI (Alpine.js)
       if (window.arUI) {
         window.arUI.setSelectedCelestial(data);
+        window.arUI.setLoadingModel(false); // TAMBAHAN: loading selesai, sukses
       }
     } catch (err) {
       console.error(`[AstroAR] Gagal mengunduh model 3D untuk index ${index}:`, err);
+      // TAMBAHAN: kasih pesan error ke user, bukan cuma console
+      if (window.arUI) {
+        window.arUI.setLoadError('Gagal memuat model 3D. Periksa koneksi internet kamu dan coba scan ulang.');
+      }
     }
   }
 
