@@ -47,7 +47,7 @@
     </header>
 
     <!-- Center Scanner Guide (Active when searching) -->
-    <template x-if="trackingState === 'SEARCHING'">
+    <template x-if="trackingState === 'SEARCHING' && !isLoadingModel">
       <div class="scanner-guide">
         <div class="scanner-box">
           <div class="corner top-left"></div>
