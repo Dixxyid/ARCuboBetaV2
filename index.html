@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; worker-src * 'self' blob: data:; child-src * 'self' blob: data:; style-src * 'self' 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; worker-src * 'self' blob: data:; child-src * 'self' blob: data:; style-src * 'self' 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Astronomy WebAR Flashcards</title>
-  
+
   <link rel="stylesheet" href="./src/styles/main.css">
   <link rel="stylesheet" href="./src/styles/glassmorphism.css">
   <link rel="stylesheet" href="./src/styles/hud.css">
@@ -24,8 +26,9 @@
     </script>
 
 
-    <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </head>
+
 <body x-data="arApp">
 
   <!-- 3D WebGL Canvas Layer -->
@@ -33,12 +36,12 @@
 
   <!-- UI Overlay (HUD Layer) -->
   <div class="hud-container">
-    
+
     <!-- Header / Status Bar -->
     <header class="hud-header glass-card">
       <div class="brand">
         <span class="dot-indicator" :class="trackingState.toLowerCase()"></span>
-        <h1 class="app-title">AstroAR7</h1>
+        <h1 class="app-title">AstroAR2</h1>
       </div>
       <div class="status-badge" x-text="trackingStatusText"></div>
     </header>
@@ -62,13 +65,14 @@
         <div class="action-bar">
           <button @click="toggleDetailModal()" class="glass-button primary">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Data Astronomi</span>
           </button>
           <button @click="resetView()" class="glass-button secondary">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              <path
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             <span>Reset Pandangan</span>
           </button>
@@ -77,10 +81,11 @@
     </footer>
 
     <!-- Detail Information Modal -->
-    <div class="modal-backdrop" x-show="showDetail" x-transition.opacity @click.self="showDetail = false" style="display: none;">
+    <div class="modal-backdrop" x-show="showDetail" x-transition.opacity @click.self="showDetail = false"
+      style="display: none;">
       <div class="modal-card glass-modal">
         <button class="modal-close" @click="showDetail = false">&times;</button>
-        
+
         <div class="modal-header">
           <span class="subtitle" x-text="selectedCelestial?.category || 'Objek Astronomi'"></span>
           <h2 x-text="selectedCelestial?.name || 'Nama Celestial'"></h2>
@@ -113,7 +118,8 @@
           <template x-if="selectedCelestial?.doi">
             <div class="doi-reference glass-inset">
               <span class="doi-label">Rujukan Literatur Ilmiah (DOI):</span>
-              <a :href="'https://doi.org/' + selectedCelestial.doi" target="_blank" rel="noopener" class="doi-link" x-text="selectedCelestial.doi"></a>
+              <a :href="'https://doi.org/' + selectedCelestial.doi" target="_blank" rel="noopener" class="doi-link"
+                x-text="selectedCelestial.doi"></a>
             </div>
           </template>
         </div>
@@ -123,4 +129,5 @@
   </div>
 
 </body>
+
 </html>

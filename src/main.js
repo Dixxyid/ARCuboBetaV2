@@ -114,22 +114,31 @@ class AppBootstrapper {
   async _onTargetFound(anchorGroup, index) {
     this.anchorGroup = anchorGroup;
 
-    // ===== TES ISOLASI TOTAL — sementara, hapus setelah selesai debug =====
-    const testBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.2, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0xff00ff }) // magenta, tidak butuh cahaya
-    );
-    testBox.position.set(0, 0.15, 0);
-    anchorGroup.add(testBox);
-    console.log('[TEST] Box magenta ditambahkan langsung ke anchorGroup:', anchorGroup);
-    // ===== akhir tes, kode asli di bawah tetap jalan seperti biasa =====
-
     if (this.currentIndex !== index || !this.currentModelGroup) {
       this.currentIndex = index;
       await this._loadCelestialModelByIndex(index);
     }
 
     if (this.currentModelGroup) {
+      // ===== TES DIAGNOSA MODEL GLB =====
+      this.currentModelGroup.traverse((child) => {
+        if (child.isMesh) {
+          console.log('[TEST] Mesh ditemukan:', child.name, {
+            visible: child.visible,
+            material: child.material,
+            hasTexture: !!child.material?.map,
+            opacity: child.material?.opacity,
+            transparent: child.material?.transparent,
+          });
+          // paksa double-side + opacity full, buat tes cepat
+          child.material.side = THREE.DoubleSide;
+          child.material.transparent = false;
+          child.material.opacity = 1;
+          child.material.needsUpdate = true;
+        }
+      });
+      // ===== akhir tes =====
+
       this.handoverManager.handoverToLocal(this.currentModelGroup, this.anchorGroup);
     }
   }
