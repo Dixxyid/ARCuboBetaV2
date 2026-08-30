@@ -129,7 +129,10 @@ class AppBootstrapper {
       await this._loadCelestialModelByIndex(index);
     }
 
-    if (this.currentModelGroup) {
+    // GUARD BARU: cuma jalankan handover kalau state BELUM TRACKED.
+    // Ini mencegah handover (reset transform + reparent) dipanggil berkali-kali
+    // tiap event 'found' nembak, padahal objek sudah di tempat yang benar.
+    if (this.currentModelGroup && this.arStateManager.getState() !== ARSTATES.TRACKED) {
       this.handoverManager.handoverToLocal(this.currentModelGroup, this.anchorGroup);
     }
   }
