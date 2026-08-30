@@ -26,7 +26,7 @@ export const celestialData = {
     semiMajorAxis: "1.524 AU (227.9 juta km)",
     surfaceTemp: "210 K (-63 °C)",
     modelPath: "/public/models/solar_system/mars.glb",
-    displaySize: 0.80, // Mars dibuat sedikit lebih kecil dari Bumi sesuai proporsi visual
+    displaySize: 0.90, // Mars dibuat sedikit lebih kecil dari Bumi sesuai proporsi visual
     description: "Planet keempat dari Matahari dengan permukaan gurun berbatu yang kaya akan besi(III) oksida, memberikannya warna kemerahan yang khas.",
     doi: "10.1126/science.1246417"
   }
