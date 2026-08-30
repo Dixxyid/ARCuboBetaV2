@@ -16,6 +16,7 @@ export function initUIStore() {
       // ===== TAMBAHAN BARU =====
       isLoadingModel: false,
       loadError: null,
+      _errorTimeout: null,
 
       setLoadingModel(isLoading) {
         this.isLoadingModel = isLoading;
@@ -25,9 +26,16 @@ export function initUIStore() {
       setLoadError(message) {
         this.isLoadingModel = false;
         this.loadError = message;
+
+        // Auto-dismiss setelah 6 detik
+        clearTimeout(this._errorTimeout);
+        this._errorTimeout = setTimeout(() => {
+          this.loadError = null;
+        }, 6000);
       },
 
       dismissError() {
+        clearTimeout(this._errorTimeout);
         this.loadError = null;
       },
       // ===== AKHIR TAMBAHAN =====

@@ -27,6 +27,9 @@ export class MindARManager {
         filterBeta: 0.001,     // makin kecil = makin halus (kurang responsif ke gerakan cepat)
         warmupTolerance: 5,    // butuh 5 frame konsisten sebelum dianggap "found" (default biasanya lebih kecil)
         missTolerance: 5,      // butuh 5 frame gagal berturut-turut baru dianggap "lost" (bukan 1 frame goyah langsung lost)
+        uiScanning: "no",
+        uiLoading: "no",
+        uiError: "no",
       });
 
       // Mendaftarkan anchor (titik jangkar) sesuai jumlah target marker

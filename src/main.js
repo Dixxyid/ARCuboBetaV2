@@ -162,6 +162,8 @@ class AppBootstrapper {
 
     if (window.arUI) {
       window.arUI.setSelectedCelestial(null);
+      window.arUI.dismissError();         // BARU
+      window.arUI.setLoadingModel(false); // BARU: jaga-jaga kalau reset dipencet di tengah proses loading
     }
   }
 

@@ -41,14 +41,14 @@
     <header class="hud-header glass-card">
       <div class="brand">
         <span class="dot-indicator" :class="trackingState.toLowerCase()"></span>
-        <h1 class="app-title">AstroAR2</h1>
+        <h1 class="app-title">AstroAR3</h1>
       </div>
       <div class="status-badge" x-text="trackingStatusText"></div>
     </header>
 
     <!-- Center Scanner Guide (Active when searching) -->
     <template x-if="trackingState === 'SEARCHING' && !isLoadingModel">
-      <div class="scanner-guide">
+      <div class="scanner-guide" x-transition.opacity.duration.300ms>
         <div class="scanner-box">
           <div class="corner top-left"></div>
           <div class="corner top-right"></div>
@@ -61,7 +61,7 @@
 
     <!-- Loading Overlay (saat model 3D sedang di-fetch) -->
     <template x-if="isLoadingModel">
-      <div class="loading-overlay">
+      <div class="loading-overlay" x-transition.opacity.duration.300ms>
         <div class="spinner"></div>
         <p class="loading-text">Memuat model 3D...</p>
       </div>
@@ -69,7 +69,7 @@
 
     <!-- Error Toast (kalau load gagal) -->
     <template x-if="loadError">
-      <div class="error-toast glass-card">
+      <div class="error-toast glass-card" x-transition.opacity.duration.300ms>
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
