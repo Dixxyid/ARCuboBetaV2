@@ -59,10 +59,6 @@ class AppBootstrapper {
     // >>> TAMBAHKAN BARIS INI: Wajib memanggil init() sebelum start() <<<
     await this.mindARManager.init();
 
-    // Inisialisasi AlvaAR (tanpa path wasm)
-    this.alvaARManager = new AlvaARManager();
-    await this.alvaARManager.init();
-
     // FIX: tambahkan cahaya ke scene milik MindAR (tempat objek "TRACKED" hidup)
     const mindarScene = this.mindARManager.mindarThree.scene;
     const ambient = new THREE.AmbientLight(0xffffff, 1.0);
@@ -70,8 +66,20 @@ class AppBootstrapper {
     directional.position.set(0.5, 1, 0.3);
     mindarScene.add(ambient, directional);
 
+    await this.mindARManager.start(); // START DULU, biar video punya dimensi
+
+    // BARU: siapkan canvas tersembunyi untuk ambil frame dari video MindAR
+    const video = this.mindARManager.mindarThree.video;
+    this._frameCanvas = document.createElement('canvas');
+    this._frameCanvas.width = video.videoWidth || 640;
+    this._frameCanvas.height = video.videoHeight || 480;
+    this._frameCtx = this._frameCanvas.getContext('2d');
+
+    // Inisialisasi AlvaAR SEKARANG, setelah dimensi video diketahui
+    this.alvaARManager = new AlvaARManager();
+    await this.alvaARManager.init(this._frameCanvas.width, this._frameCanvas.height);
+
     this._startRenderLoop();
-    await this.mindARManager.start();
 
     window.arAppBootstrapper = this;
     console.log("[AstroAR] Aplikasi WebAR Siap Digunakan!");
@@ -156,6 +164,10 @@ class AppBootstrapper {
       this.alvaARManager.resetSLAM();
     }
 
+    // Reset posisi dan rotasi kamera Three.js (SLAM) ke posisi awal
+    this.sceneManager.camera.position.set(0, 0, 0);
+    this.sceneManager.camera.quaternion.identity();
+
     this.currentIndex = null;
     this.anchorGroup = null;
     this.arStateManager.setState(ARSTATES.SEARCHING);
@@ -174,6 +186,18 @@ class AppBootstrapper {
       // Rotasi planet berputar pada sumbunya
       if (this.currentModelGroup) {
         this.currentModelGroup.rotation.y += 0.005;
+      }
+
+      // BARU: kalau lagi mode SLAM, ambil frame video & update pose kamera
+      if (this.arStateManager.getState() === ARSTATES.SLAM && this.alvaARManager?.isInitialized) {
+        const video = this.mindARManager.mindarThree.video;
+        this._frameCtx.drawImage(video, 0, 0, this._frameCanvas.width, this._frameCanvas.height);
+        const frameData = this._frameCtx.getImageData(0, 0, this._frameCanvas.width, this._frameCanvas.height);
+
+        const pose = this.alvaARManager.processFrame(frameData);
+        if (pose) {
+          this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
+        }
       }
 
       this.sceneManager.render();
