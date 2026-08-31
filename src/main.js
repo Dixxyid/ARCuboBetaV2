@@ -188,27 +188,17 @@ class AppBootstrapper {
         this.currentModelGroup.rotation.y += 0.005;
       }
 
-      // BARU: kalau lagi mode SLAM, ambil frame video & update pose kamera
-      if (this.arStateManager.getState() === ARSTATES.SLAM && this.alvaARManager?.isInitialized) {
+      // Jalankan processFrame TIAP frame (bukan cuma pas SLAM) supaya SLAM sempat mapping dari awal,
+      // tapi cuma UPDATE KAMERA saat state SLAM aktif
+      if (this.alvaARManager?.isInitialized && this.mindARManager?.mindarThree?.video) {
         const video = this.mindARManager.mindarThree.video;
         this._frameCtx.drawImage(video, 0, 0, this._frameCanvas.width, this._frameCanvas.height);
         const frameData = this._frameCtx.getImageData(0, 0, this._frameCanvas.width, this._frameCanvas.height);
 
         const pose = this.alvaARManager.processFrame(frameData);
 
-        // DEBUG SEMENTARA
-        if (pose) {
-          console.log('[DEBUG] Pose diterima:', Array.from(pose));
-        } else {
-          console.log('[DEBUG] Pose masih null (SLAM belum lock)');
-        }
-
-        if (pose) {
+        if (pose && this.arStateManager.getState() === ARSTATES.SLAM) {
           this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
-          console.log('[DEBUG] Kamera setelah update:', {
-            position: this.sceneManager.camera.position.toArray(),
-            quaternion: this.sceneManager.camera.quaternion.toArray(),
-          });
         }
       }
 
