@@ -73,7 +73,7 @@ class AppBootstrapper {
     this._frameCanvas = document.createElement('canvas');
     this._frameCanvas.width = video.videoWidth || 640;
     this._frameCanvas.height = video.videoHeight || 480;
-    this._frameCtx = this._frameCanvas.getContext('2d');
+    this._frameCtx = this._frameCanvas.getContext('2d', { willReadFrequently: true });
 
     // Inisialisasi AlvaAR SEKARANG, setelah dimensi video diketahui
     this.alvaARManager = new AlvaARManager();
@@ -195,8 +195,20 @@ class AppBootstrapper {
         const frameData = this._frameCtx.getImageData(0, 0, this._frameCanvas.width, this._frameCanvas.height);
 
         const pose = this.alvaARManager.processFrame(frameData);
+
+        // DEBUG SEMENTARA
+        if (pose) {
+          console.log('[DEBUG] Pose diterima:', Array.from(pose));
+        } else {
+          console.log('[DEBUG] Pose masih null (SLAM belum lock)');
+        }
+
         if (pose) {
           this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
+          console.log('[DEBUG] Kamera setelah update:', {
+            position: this.sceneManager.camera.position.toArray(),
+            quaternion: this.sceneManager.camera.quaternion.toArray(),
+          });
         }
       }
 
