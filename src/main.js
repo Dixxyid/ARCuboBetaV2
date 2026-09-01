@@ -11,9 +11,6 @@ import { MindARManager } from './ar/MindARManager.js';
 import { AlvaARManager } from './ar/AlvaARManager.js';
 import { HandoverManager } from './ar/HandoverManager.js';
 
-/**
- * Bootstrapper Utama WebAR Application (Mendukung Multi-Marker)
- */
 class AppBootstrapper {
   constructor() {
     this.sceneManager = null;
@@ -26,7 +23,11 @@ class AppBootstrapper {
 
     this.currentModelGroup = null;
     this.anchorGroup = null;
-    this.currentIndex = null; // Melacak index marker yang sedang aktif
+    this.currentIndex = null;
+
+    this._frameCanvas = null;
+    this._frameCtx = null;
+    this._debugFrameCount = 0; // BARU: buat throttle log debug
   }
 
   async start() {
@@ -39,15 +40,11 @@ class AppBootstrapper {
     this.modelLoader = new ModelLoader();
 
     this.arStateManager = new ARStateManager((newState) => {
-      if (window.arUI) {
-        window.arUI.setTrackingState(newState);
-      }
+      if (window.arUI) window.arUI.setTrackingState(newState);
     });
 
     this.handoverManager = new HandoverManager(this.sceneManager.scene, this.arStateManager);
 
-    // Inisialisasi MindAR dengan targetCount: 2 (Bumi dan Mars)
-    // PERBAIKAN: Gunakan path relatif './' agar sesuai dengan sub-path GitHub Pages
     this.mindARManager = new MindARManager({
       container: document.getElementById('canvas-container'),
       targetPath: './public/targets/flashcards.mind',
@@ -56,26 +53,24 @@ class AppBootstrapper {
       onTargetLost: (index) => this._onTargetLost(index)
     });
 
-    // >>> TAMBAHKAN BARIS INI: Wajib memanggil init() sebelum start() <<<
     await this.mindARManager.init();
 
-    // FIX: tambahkan cahaya ke scene milik MindAR (tempat objek "TRACKED" hidup)
     const mindarScene = this.mindARManager.mindarThree.scene;
     const ambient = new THREE.AmbientLight(0xffffff, 1.0);
     const directional = new THREE.DirectionalLight(0xffffff, 1.5);
     directional.position.set(0.5, 1, 0.3);
     mindarScene.add(ambient, directional);
 
-    await this.mindARManager.start(); // START DULU, biar video punya dimensi
+    await this.mindARManager.start(); // start dulu, biar video punya dimensi valid
 
-    // BARU: siapkan canvas tersembunyi untuk ambil frame dari video MindAR
+    // Siapkan canvas tersembunyi untuk ambil frame video buat AlvaAR
     const video = this.mindARManager.mindarThree.video;
     this._frameCanvas = document.createElement('canvas');
     this._frameCanvas.width = video.videoWidth || 640;
     this._frameCanvas.height = video.videoHeight || 480;
+    // FIX: willReadFrequently, karena kita getImageData tiap frame
     this._frameCtx = this._frameCanvas.getContext('2d', { willReadFrequently: true });
 
-    // Inisialisasi AlvaAR SEKARANG, setelah dimensi video diketahui
     this.alvaARManager = new AlvaARManager();
     await this.alvaARManager.init(this._frameCanvas.width, this._frameCanvas.height);
 
@@ -85,16 +80,12 @@ class AppBootstrapper {
     console.log("[AstroAR] Aplikasi WebAR Siap Digunakan!");
   }
 
-  /**
-   * Memuat data dan model planet berdasarkan urutan Index
-   */
   async _loadCelestialModelByIndex(index) {
     if (this.currentModelGroup) {
       this.modelLoader.disposeModel(this.currentModelGroup);
       this.currentModelGroup = null;
     }
 
-    // TAMBAHAN: mulai loading
     if (window.arUI) window.arUI.setLoadingModel(true);
 
     try {
@@ -119,11 +110,10 @@ class AppBootstrapper {
 
       if (window.arUI) {
         window.arUI.setSelectedCelestial(data);
-        window.arUI.setLoadingModel(false); // TAMBAHAN: loading selesai, sukses
+        window.arUI.setLoadingModel(false);
       }
     } catch (err) {
       console.error(`[AstroAR] Gagal mengunduh model 3D untuk index ${index}:`, err);
-      // TAMBAHAN: kasih pesan error ke user, bukan cuma console
       if (window.arUI) {
         window.arUI.setLoadError('Gagal memuat model 3D. Periksa koneksi internet kamu dan coba scan ulang.');
       }
@@ -138,18 +128,13 @@ class AppBootstrapper {
       await this._loadCelestialModelByIndex(index);
     }
 
-    // GUARD BARU: cuma jalankan handover kalau state BELUM TRACKED.
-    // Ini mencegah handover (reset transform + reparent) dipanggil berkali-kali
-    // tiap event 'found' nembak, padahal objek sudah di tempat yang benar.
     if (this.currentModelGroup && this.arStateManager.getState() !== ARSTATES.TRACKED) {
       this.handoverManager.handoverToLocal(this.currentModelGroup, this.anchorGroup);
     }
   }
 
   _onTargetLost(index) {
-    // Pastikan event kehilangan (lost) ini milik marker yang sedang aktif
     if (this.currentModelGroup && this.currentIndex === index && this.arStateManager.getState() === ARSTATES.TRACKED) {
-      // Pindahkan koordinat planet ke World Coordinate (SLAM)
       this.handoverManager.handoverToWorld(this.currentModelGroup, this.anchorGroup);
     }
   }
@@ -164,7 +149,7 @@ class AppBootstrapper {
       this.alvaARManager.resetSLAM();
     }
 
-    // Reset posisi dan rotasi kamera Three.js (SLAM) ke posisi awal
+    // Reset kamera SLAM ke posisi awal
     this.sceneManager.camera.position.set(0, 0, 0);
     this.sceneManager.camera.quaternion.identity();
 
@@ -174,8 +159,8 @@ class AppBootstrapper {
 
     if (window.arUI) {
       window.arUI.setSelectedCelestial(null);
-      window.arUI.dismissError();         // BARU
-      window.arUI.setLoadingModel(false); // BARU: jaga-jaga kalau reset dipencet di tengah proses loading
+      window.arUI.dismissError();
+      window.arUI.setLoadingModel(false);
     }
   }
 
@@ -183,22 +168,31 @@ class AppBootstrapper {
     const animate = () => {
       requestAnimationFrame(animate);
 
-      // Rotasi planet berputar pada sumbunya
       if (this.currentModelGroup) {
         this.currentModelGroup.rotation.y += 0.005;
       }
 
-      // Jalankan processFrame TIAP frame (bukan cuma pas SLAM) supaya SLAM sempat mapping dari awal,
-      // tapi cuma UPDATE KAMERA saat state SLAM aktif
-      if (this.alvaARManager?.isInitialized && this.mindARManager?.mindarThree?.video) {
+      // Proses frame SLAM TERUS-MENERUS (bukan cuma pas state SLAM),
+      // supaya engine sempat "warm up" / mapping lingkungan dari awal.
+      if (this.alvaARManager?.isInitialized && this._frameCtx) {
         const video = this.mindARManager.mindarThree.video;
-        this._frameCtx.drawImage(video, 0, 0, this._frameCanvas.width, this._frameCanvas.height);
-        const frameData = this._frameCtx.getImageData(0, 0, this._frameCanvas.width, this._frameCanvas.height);
 
-        const pose = this.alvaARManager.processFrame(frameData);
+        if (video.readyState >= 2) { // pastikan video sudah punya frame valid
+          this._frameCtx.drawImage(video, 0, 0, this._frameCanvas.width, this._frameCanvas.height);
+          const frameData = this._frameCtx.getImageData(0, 0, this._frameCanvas.width, this._frameCanvas.height);
 
-        if (pose && this.arStateManager.getState() === ARSTATES.SLAM) {
-          this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
+          const pose = this.alvaARManager.processFrame(frameData);
+
+          // DEBUG: throttle log, cuma print 1x tiap ~30 frame biar console gak spam
+          this._debugFrameCount++;
+          if (this._debugFrameCount % 30 === 0) {
+            console.log('[DEBUG SLAM]', pose ? 'Pose LOCKED' : 'Pose masih NULL (belum lock)', pose ? Array.from(pose).map(n => n.toFixed(3)) : '');
+          }
+
+          // Kamera cuma di-update kalau state memang lagi SLAM
+          if (pose && this.arStateManager.getState() === ARSTATES.SLAM) {
+            this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
+          }
         }
       }
 
@@ -209,7 +203,6 @@ class AppBootstrapper {
   }
 }
 
-// Menjalankan aplikasi ketika dokumen selesai dimuat
 document.addEventListener('DOMContentLoaded', () => {
   const app = new AppBootstrapper();
   app.start();
