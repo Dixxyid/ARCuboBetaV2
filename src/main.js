@@ -1,6 +1,19 @@
 import * as THREE from 'three';
 import Alpine from 'alpinejs';
 
+// Polyfill kompatibilitas MindAR dengan Three.js r160+ (menghilangkan warning outputEncoding)
+if (THREE.WebGLRenderer && !Object.prototype.hasOwnProperty.call(THREE.WebGLRenderer.prototype, 'outputEncoding')) {
+  Object.defineProperty(THREE.WebGLRenderer.prototype, 'outputEncoding', {
+    get() {
+      return this.outputColorSpace === THREE.SRGBColorSpace ? 3001 : 3000;
+    },
+    set(val) {
+      this.outputColorSpace = (val === 3001 || val === 'srgb') ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    },
+    configurable: true
+  });
+}
+
 import { initUIStore } from './ui/uiState.js';
 import { celestialData } from './data/celestialData.js';
 import { SceneManager } from './core/Scene.js';
@@ -27,7 +40,7 @@ class AppBootstrapper {
 
     this._frameCanvas = null;
     this._frameCtx = null;
-    this._debugFrameCount = 0; // BARU: buat throttle log debug
+    this._lastPoseLocked = false;
   }
 
   async start() {
@@ -180,18 +193,22 @@ class AppBootstrapper {
         if (video.readyState >= 2) { // pastikan video sudah punya frame valid
           this._frameCtx.drawImage(video, 0, 0, this._frameCanvas.width, this._frameCanvas.height);
           const frameData = this._frameCtx.getImageData(0, 0, this._frameCanvas.width, this._frameCanvas.height);
-
           const pose = this.alvaARManager.processFrame(frameData);
 
-          // DEBUG: throttle log, cuma print 1x tiap ~30 frame biar console gak spam
-          this._debugFrameCount++;
-          if (this._debugFrameCount % 30 === 0) {
-            console.log('[DEBUG SLAM]', pose ? 'Pose LOCKED' : 'Pose masih NULL (belum lock)', pose ? Array.from(pose).map(n => n.toFixed(3)) : '');
-          }
-
-          // Kamera cuma di-update kalau state memang lagi SLAM
-          if (pose && this.arStateManager.getState() === ARSTATES.SLAM) {
-            this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
+          if (pose) {
+            if (!this._lastPoseLocked) {
+              console.log('[AlvaAR] Pose SLAM Terkunci (Tracking Active)');
+              this._lastPoseLocked = true;
+            }
+            // Kamera di-update kalau state memang lagi SLAM
+            if (this.arStateManager.getState() === ARSTATES.SLAM) {
+              this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
+            }
+          } else {
+            if (this._lastPoseLocked) {
+              console.log('[AlvaAR] Pose SLAM Terputus (Mencari fitur visual...)');
+              this._lastPoseLocked = false;
+            }
           }
         }
       }
