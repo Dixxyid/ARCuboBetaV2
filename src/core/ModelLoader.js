@@ -66,15 +66,20 @@ export class ModelLoader {
     const scaleFactor = targetSize / maxDimension;
     model.scale.setScalar(scaleFactor);
 
-    // 5. Pusatkan model & taruh alasnya di y=0, supaya tidak "melayang"/offset dari anchor
+    // 5. Pusatkan model di X & Y (tengah kartu), dan angkat di Z (normal tegak lurus kartu)
     const centeredBox = new THREE.Box3().setFromObject(model);
     const center = new THREE.Vector3();
     centeredBox.getCenter(center);
     model.position.x -= center.x;
-    model.position.z -= center.z;
-    model.position.y -= centeredBox.min.y;
+    model.position.y -= center.y;
+    
+    // Pada 8th Wall planar target, permukaan kartu adalah XY dan arah normal ke kamera adalah +Z.
+    // Posisikan alas model agar berada tepat di atas bidang kartu dengan sedikit efek melayang (hover).
+    const depthSize = centeredBox.max.z - centeredBox.min.z;
+    model.position.z -= centeredBox.min.z;
+    model.position.z += depthSize * 0.15;
 
-    console.log(`[ModelLoader] Auto-scale diterapkan. Dimensi asli maks: ${maxDimension.toFixed(3)}, scaleFactor: ${scaleFactor.toFixed(6)}, hasil akhir: ${targetSize}`);
+    console.log(`[ModelLoader] Auto-scale & centering diterapkan. Dimensi asli maks: ${maxDimension.toFixed(3)}, scaleFactor: ${scaleFactor.toFixed(6)}, hasil akhir: ${targetSize}`);
 
     return model;
   }

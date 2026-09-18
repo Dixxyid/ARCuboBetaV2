@@ -44,9 +44,13 @@ html, body {
 }
 
 #canvas-container canvas {
-  width: 100% !important;
-  height: 100% !important;
+  /* Ukuran pixel diatur oleh JS (_createCanvas) agar sesuai viewport.
+     CSS hanya pastikan canvas menempel penuh secara visual. */
+  position: fixed;
+  top: 0;
+  left: 0;
   display: block;
+  /* Jangan override width/height dengan !important agar 8th Wall bisa sinkronkan resolusi sendiri */
 }
 
 

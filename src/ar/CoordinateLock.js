@@ -25,26 +25,38 @@ export class CoordinateLock {
   lock(detail) {
     const { position, rotation, scale, name } = detail;
 
-    this._position.set(position.x, position.y, position.z);
-    this._quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
-    if (scale) this._scale.set(scale.x, scale.y, scale.z);
+    if (position) this._position.set(position.x, position.y, position.z);
+    if (rotation) this._quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+    
+    if (typeof scale === 'number' && Number.isFinite(scale) && scale > 0) {
+      this._scale.set(scale, scale, scale);
+    } else if (scale && typeof scale.x === 'number') {
+      this._scale.set(scale.x, scale.y, scale.z);
+    } else {
+      this._scale.set(1, 1, 1);
+    }
 
     this._targetName = name;
     this._timestamp  = Date.now();
     this._locked     = true;
 
-    console.log(`[CoordinateLock] Pose terkunci untuk target "${name}" di`, this._position);
+    console.log(`[CoordinateLock] Pose terkunci untuk target "${name}" di`, this._position, 'scale:', this._scale);
   }
 
   /**
    * Update pose saat target masih terlihat (reality.imageupdated)
-   * @param {{ position, rotation }} detail
+   * @param {{ position, rotation, scale }} detail
    */
   update(detail) {
     if (!this._locked) return;
-    const { position, rotation } = detail;
-    this._position.set(position.x, position.y, position.z);
-    this._quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+    const { position, rotation, scale } = detail;
+    if (position) this._position.set(position.x, position.y, position.z);
+    if (rotation) this._quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+    if (typeof scale === 'number' && Number.isFinite(scale) && scale > 0) {
+      this._scale.set(scale, scale, scale);
+    } else if (scale && typeof scale.x === 'number') {
+      this._scale.set(scale.x, scale.y, scale.z);
+    }
   }
 
   /**

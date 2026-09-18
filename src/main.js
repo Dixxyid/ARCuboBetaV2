@@ -138,6 +138,19 @@ class AppBootstrapper {
       width: '100%', height: '100%',
       zIndex: '0',
     });
+
+    // Set resolusi pixel canvas = ukuran viewport agar rasio kamera tidak lonjong
+    const setCanvasSize = () => {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    setCanvasSize();
+    window.addEventListener('resize', setCanvasSize);
+    window.addEventListener('orientationchange', () => {
+      // Tunda sedikit agar browser selesai merotasi layout
+      setTimeout(setCanvasSize, 200);
+    });
+
     document.getElementById('canvas-container').appendChild(canvas);
     return canvas;
   }
