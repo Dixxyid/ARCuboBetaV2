@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+
+if (typeof window !== 'undefined' && !window.THREE) {
+  window.THREE = THREE;
+}
 import { XR8Promise } from '@8thwall/engine';
 import { ARSTATES } from './ARState.js';
 

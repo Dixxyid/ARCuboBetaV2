@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 
+// 8th Wall XR8.Threejs pipeline module mewajibkan THREE tersedia di global window
+if (typeof window !== 'undefined') {
+  window.THREE = THREE;
+}
+
 import { initUIStore }           from './ui/uiState.js';
 import { celestialData }         from './data/celestialData.js';
 import { ModelLoader }           from './core/ModelLoader.js';
