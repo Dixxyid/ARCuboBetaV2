@@ -7,6 +7,7 @@ on:
       - master
   workflow_dispatch:
 
+# Izin di level workflow
 permissions:
   contents: read
   pages: write
@@ -21,6 +22,11 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    # Izin spesifik di level job untuk autentikasi OIDC GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,11 +35,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build project with Vite
         run: npm run build
