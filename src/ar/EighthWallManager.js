@@ -75,23 +75,23 @@ export class EighthWallManager {
       // 1. Render feed kamera ke background canvas
       XR8.GlTextureRenderer.pipelineModule(),
 
-      // 2. FullWindowCanvas — menjaga canvas tetap sinkron ukuran layar secara responsif
-      ...(XR8.FullWindowCanvas ? [XR8.FullWindowCanvas.pipelineModule()] : []),
-
-      // 3. Integrasikan Three.js dengan XR8 camera
+      // 2. Integrasikan Three.js dengan XR8 camera
       XR8.Threejs.pipelineModule(),
 
-      // 4. World tracking / SLAM
+      // 3. World tracking / SLAM
       XR8.XrController.pipelineModule(),
 
-      // 5. Image target detection (jika modul tersedia)
+      // 4. Image target detection (jika modul tersedia)
       ...(XR8.XrImageTargets ? [XR8.XrImageTargets.pipelineModule()] : []),
 
-      // 6. Pipeline modul kustom (handle events + update Three.js)
+      // 5. Pipeline modul kustom (handle events + update Three.js)
       this._buildCustomPipelineModule(),
     ]);
 
-    XR8.run({ canvas: this.canvas });
+    XR8.run({
+      canvas: this.canvas,
+      allowedDevices: XR8.XrConfig?.device?.().ANY || 'any',
+    });
     this._isRunning = true;
     console.log('[8thWall] XR8 pipeline dimulai.');
   }
