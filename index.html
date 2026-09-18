@@ -12,20 +12,10 @@
   <link rel="stylesheet" href="./src/styles/glassmorphism.css">
   <link rel="stylesheet" href="./src/styles/hud.css">
 
-  <!-- IMPORT MAP YANG DISEMPURNAKAN -->
-  <script type="importmap">
-      {
-        "imports": {
-          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-          "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-          "alpinejs": "https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/module.esm.js",
-          "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
-        }
-      }
-    </script>
+  <!-- 8th Wall Engine + SLAM Binary (Lokal dari /public/xr/) -->
+  <script src="./xr/xr.js" async data-preload-chunks="slam"></script>
 
-
+  <!-- Vite akan resolve semua import dari node_modules secara otomatis -->
   <script type="module" src="./src/main.js"></script>
 </head>
 
@@ -46,8 +36,23 @@
       <div class="status-badge" x-text="trackingStatusText"></div>
     </header>
 
-    <!-- Center Scanner Guide (Active when searching) -->
-    <template x-if="trackingState === 'SEARCHING' && !isLoadingModel">
+    <!-- Notif Scan Permukaan (State: WORLD_SCAN) -->
+    <template x-if="trackingState === 'WORLD_SCAN'">
+      <div class="scanner-guide world-scan" x-transition.opacity.duration.300ms>
+        <div class="scanner-box surface">
+          <div class="corner top-left"></div>
+          <div class="corner top-right"></div>
+          <div class="corner bottom-left"></div>
+          <div class="corner bottom-right"></div>
+          <div class="scan-line"></div>
+        </div>
+        <p class="guide-text">Gerakkan kamera untuk scan permukaan</p>
+        <p class="guide-subtext">8th Wall sedang memetakan dunia...</p>
+      </div>
+    </template>
+
+    <!-- Notif Cari Marker (State: MARKER_SCAN) -->
+    <template x-if="trackingState === 'MARKER_SCAN' && !isLoadingModel">
       <div class="scanner-guide" x-transition.opacity.duration.300ms>
         <div class="scanner-box">
           <div class="corner top-left"></div>
@@ -59,7 +64,28 @@
       </div>
     </template>
 
-    <!-- Loading Overlay (saat model 3D sedang di-fetch) -->
+    <!-- Notif Scan Ulang (State: VALIDATING gagal) -->
+    <template x-if="showRescanNotif">
+      <div class="rescan-notif glass-card" x-transition.opacity.duration.300ms>
+        <svg class="icon warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>Data tidak valid. Scan ulang permukaan...</span>
+      </div>
+    </template>
+
+    <!-- Indikator Coordinate Locked -->
+    <template x-if="trackingState === 'COORDINATE_LOCKED'">
+      <div class="lock-indicator" x-transition.opacity.duration.300ms>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0110 0v4"></path>
+        </svg>
+        <span>Coordinate Terkunci</span>
+      </div>
+    </template>
+
+    <!-- Loading Overlay -->
     <template x-if="isLoadingModel">
       <div class="loading-overlay" x-transition.opacity.duration.300ms>
         <div class="spinner"></div>
@@ -67,7 +93,7 @@
       </div>
     </template>
 
-    <!-- Error Toast (kalau load gagal) -->
+    <!-- Error Toast -->
     <template x-if="loadError">
       <div class="error-toast glass-card" x-transition.opacity.duration.300ms>
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -88,12 +114,14 @@
             </svg>
             <span>Data Astronomi</span>
           </button>
-          <button @click="resetView()" class="glass-button secondary">
+          <!-- Tombol Lock Coordinate (ganti Reset Pandangan) -->
+          <button @click="lockCoordinate()" class="glass-button secondary"
+            :class="{ 'locked': trackingState === 'COORDINATE_LOCKED' }">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0110 0v4"></path>
             </svg>
-            <span>Reset Pandangan</span>
+            <span x-text="trackingState === 'COORDINATE_LOCKED' ? 'Terkunci ✓' : 'Lock Coordinate'"></span>
           </button>
         </div>
       </template>

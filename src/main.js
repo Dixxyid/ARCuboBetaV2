@@ -1,226 +1,350 @@
 import * as THREE from 'three';
-import Alpine from 'alpinejs';
 
-// Polyfill kompatibilitas MindAR dengan Three.js r160+ (menghilangkan warning outputEncoding)
-if (THREE.WebGLRenderer && !Object.prototype.hasOwnProperty.call(THREE.WebGLRenderer.prototype, 'outputEncoding')) {
-  Object.defineProperty(THREE.WebGLRenderer.prototype, 'outputEncoding', {
-    get() {
-      return this.outputColorSpace === THREE.SRGBColorSpace ? 3001 : 3000;
+import { initUIStore }           from './ui/uiState.js';
+import { celestialData }         from './data/celestialData.js';
+import { ModelLoader }           from './core/ModelLoader.js';
+import { LightingManager }       from './core/Lighting.js';
+import { ARStateManager, ARSTATES } from './ar/ARState.js';
+import { EighthWallManager }     from './ar/EighthWallManager.js';
+import { CoordinateLock }        from './ar/CoordinateLock.js';
+
+// Konfigurasi Image Target 8th Wall dengan metadata geometri kartu
+const AR_IMAGE_TARGETS = [
+  {
+    name: 'earth',
+    type: 'PLANAR',
+    imagePath: './targets/raw_images/0_earth_card.png',
+    properties: {
+      originalWidth: 638,
+      originalHeight: 1016,
+      width: 638,
+      height: 1016,
+      top: 0,
+      left: 0,
+      isRotated: false,
+      physicalWidthInMeters: 0.1,
     },
-    set(val) {
-      this.outputColorSpace = (val === 3001 || val === 'srgb') ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  },
+  {
+    name: 'mars',
+    type: 'PLANAR',
+    imagePath: './targets/raw_images/1_mars_card.png',
+    properties: {
+      originalWidth: 638,
+      originalHeight: 1016,
+      width: 638,
+      height: 1016,
+      top: 0,
+      left: 0,
+      isRotated: false,
+      physicalWidthInMeters: 0.1,
     },
-    configurable: true
-  });
+  },
+];
+
+// Helper pencocokan target name yang robust
+function resolveCelestial(targetName) {
+  if (!targetName) return null;
+  const name = String(targetName).toLowerCase();
+  if (name.includes('earth')) return celestialData.earth;
+  if (name.includes('mars'))  return celestialData.mars;
+  return null;
 }
 
-import { initUIStore } from './ui/uiState.js';
-import { celestialData } from './data/celestialData.js';
-import { SceneManager } from './core/Scene.js';
-import { LightingManager } from './core/Lighting.js';
-import { ModelLoader } from './core/ModelLoader.js';
-import { ARStateManager, ARSTATES } from './ar/ARState.js';
-import { MindARManager } from './ar/MindARManager.js';
-import { AlvaARManager } from './ar/AlvaARManager.js';
-import { HandoverManager } from './ar/HandoverManager.js';
+// Durasi (ms) marker harus benar-benar hilang sebelum pindah ke WORLD_TRACKING
+const MARKER_LOST_TIMEOUT_MS = 2500;
+
+// Durasi (ms) di VALIDATING sebelum minta scan ulang dunia
+const RESCAN_TIMEOUT_MS = 5000;
 
 class AppBootstrapper {
   constructor() {
-    this.sceneManager = null;
-    this.lightingManager = null;
-    this.modelLoader = null;
-    this.arStateManager = null;
-    this.mindARManager = null;
-    this.alvaARManager = null;
-    this.handoverManager = null;
+    this.arStateManager   = null;
+    this.eighthWallMgr    = null;
+    this.coordinateLock   = null;
+    this.modelLoader      = null;
+    this.lightingMgr      = null;
 
+    // Three.js objects dari XR8 scene
+    this._scene    = null;
+    this._camera   = null;
+    this._renderer = null;
+
+    // State model
     this.currentModelGroup = null;
-    this.anchorGroup = null;
-    this.currentIndex = null;
+    this.currentCelestial  = null;
 
-    this._frameCanvas = null;
-    this._frameCtx = null;
-    this._lastPoseLocked = false;
+    // Timer untuk state transitions
+    this._markerLostTimer  = null;
+    this._rescanTimer      = null;
   }
 
-  async start() {
-    console.log("[AstroAR] Menginisialisasi Aplikasi...");
+  // ─── Entry Point ────────────────────────────────────────────────────────────
 
+  async start() {
+    console.log('[AstroAR] Menginisialisasi aplikasi...');
+
+    // 1. Alpine UI store
     initUIStore();
 
-    this.sceneManager = new SceneManager('canvas-container');
-    this.lightingManager = new LightingManager(this.sceneManager.scene);
-    this.modelLoader = new ModelLoader();
-
+    // 2. State machine
     this.arStateManager = new ARStateManager((newState) => {
       if (window.arUI) window.arUI.setTrackingState(newState);
     });
 
-    this.handoverManager = new HandoverManager(this.sceneManager.scene, this.arStateManager);
+    // 3. Utilities
+    this.coordinateLock = new CoordinateLock();
+    this.modelLoader    = new ModelLoader();
 
-    this.mindARManager = new MindARManager({
-      container: document.getElementById('canvas-container'),
-      targetPath: './public/targets/flashcards.mind',
-      targetCount: 2,
-      onTargetFound: (anchorGroup, index) => this._onTargetFound(anchorGroup, index),
-      onTargetLost: (index) => this._onTargetLost(index)
+    // 4. Canvas untuk XR8 (buat manual, diinject ke body)
+    const canvas = this._createCanvas();
+
+    // 5. Inisialisasi 8th Wall Manager
+    this.eighthWallMgr = new EighthWallManager({
+      canvas,
+      imageTargets: AR_IMAGE_TARGETS,
+      stateManager: this.arStateManager,
+      callbacks: {
+        onXRSceneReady:  (xrScene) => this._onXRSceneReady(xrScene),
+        onSurfaceReady:  ()        => this._onSurfaceReady(),
+        onTargetFound:   (detail)  => this._onTargetFound(detail),
+        onTargetUpdated: (detail)  => this._onTargetUpdated(detail),
+        onTargetLost:    (detail)  => this._onTargetLost(detail),
+        onTrackingLost:  ()        => this._onTrackingLost(),
+        onRender:        ()        => this._onRender(),
+      },
     });
 
-    await this.mindARManager.init();
-
-    const mindarScene = this.mindARManager.mindarThree.scene;
-    const ambient = new THREE.AmbientLight(0xffffff, 1.0);
-    const directional = new THREE.DirectionalLight(0xffffff, 1.5);
-    directional.position.set(0.5, 1, 0.3);
-    mindarScene.add(ambient, directional);
-
-    await this.mindARManager.start(); // start dulu, biar video punya dimensi valid
-
-    // Siapkan canvas tersembunyi untuk ambil frame video buat AlvaAR
-    const video = this.mindARManager.mindarThree.video;
-    this._frameCanvas = document.createElement('canvas');
-    this._frameCanvas.width = video.videoWidth || 640;
-    this._frameCanvas.height = video.videoHeight || 480;
-    // FIX: willReadFrequently, karena kita getImageData tiap frame
-    this._frameCtx = this._frameCanvas.getContext('2d', { willReadFrequently: true });
-
-    this.alvaARManager = new AlvaARManager();
-    await this.alvaARManager.init(this._frameCanvas.width, this._frameCanvas.height);
-
-    this._startRenderLoop();
+    await this.eighthWallMgr.init();
+    await this.eighthWallMgr.start();
 
     window.arAppBootstrapper = this;
-    console.log("[AstroAR] Aplikasi WebAR Siap Digunakan!");
+    console.log('[AstroAR] Aplikasi siap!');
   }
 
-  async _loadCelestialModelByIndex(index) {
-    if (this.currentModelGroup) {
-      this.modelLoader.disposeModel(this.currentModelGroup);
-      this.currentModelGroup = null;
+  // ─── Canvas Setup ────────────────────────────────────────────────────────────
+
+  _createCanvas() {
+    const canvas = document.createElement('canvas');
+    canvas.id    = 'xr-canvas';
+    Object.assign(canvas.style, {
+      position: 'fixed',
+      top: '0', left: '0',
+      width: '100%', height: '100%',
+      zIndex: '0',
+    });
+    document.getElementById('canvas-container').appendChild(canvas);
+    return canvas;
+  }
+
+  // ─── XR Scene Ready ─────────────────────────────────────────────────────────
+
+  _onXRSceneReady({ renderer, scene, camera }) {
+    this._scene    = scene;
+    this._camera   = camera;
+    this._renderer = renderer;
+
+    // Lighting sudah ditambahkan di EighthWallManager, tapi bisa override di sini
+    this.lightingMgr = new LightingManager(scene);
+    console.log('[AstroAR] XR Scene Three.js siap.');
+  }
+
+  // ─── Surface Ready (WORLD_SCAN → MARKER_SCAN) ───────────────────────────────
+
+  _onSurfaceReady() {
+    if (window.arUI) window.arUI.setShowRescanNotif(false);
+    console.log('[AstroAR] Surface siap. Mulai cari flashcard...');
+  }
+
+  // ─── Image Target Found ──────────────────────────────────────────────────────
+
+  async _onTargetFound(detail) {
+    // Batalkan timer "marker lost" jika ada
+    this._clearMarkerLostTimer();
+    this._clearRescanTimer();
+
+    const celestial = resolveCelestial(detail.name);
+    if (!celestial) {
+      console.warn('[AstroAR] Target tidak dikenali:', detail.name);
+      return;
     }
 
+    // Lock coordinate di world space
+    this.coordinateLock.lock(detail);
+    this.arStateManager.setState(ARSTATES.COORDINATE_LOCKED);
+
+    if (window.arUI) {
+      window.arUI.setShowRescanNotif(false);
+      window.arUI.setCoordinateLocked(true);
+    }
+
+    // Load model jika berbeda atau belum ada
+    if (this.currentCelestial?.name !== celestial.name || !this.currentModelGroup) {
+      await this._loadModel(celestial, detail);
+    } else {
+      // Posisikan ulang model yang sudah ada
+      this.coordinateLock.applyTo(this.currentModelGroup);
+    }
+  }
+
+  // ─── Image Target Updated ────────────────────────────────────────────────────
+
+  _onTargetUpdated(detail) {
+    // Update pose lock saat marker masih visible
+    this.coordinateLock.update(detail);
+
+    if (this.currentModelGroup) {
+      this.coordinateLock.applyTo(this.currentModelGroup);
+    }
+  }
+
+  // ─── Image Target Lost ───────────────────────────────────────────────────────
+
+  _onTargetLost(detail) {
+    if (!this.arStateManager.is(ARSTATES.COORDINATE_LOCKED) &&
+        !this.arStateManager.is(ARSTATES.WORLD_TRACKING)) return;
+
+    this.arStateManager.setState(ARSTATES.VALIDATING);
+    if (window.arUI) window.arUI.setCoordinateLocked(false);
+
+    // Beri jeda sebentar — mungkin marker hanya ter-oklusi sebentar
+    this._markerLostTimer = setTimeout(() => {
+      this._handleMarkerFullyLost();
+    }, MARKER_LOST_TIMEOUT_MS);
+  }
+
+  _handleMarkerFullyLost() {
+    // Validasi apakah pose masih masuk akal
+    if (this._camera && this.coordinateLock.isValid(this._camera.position)) {
+      // Pose valid → lanjut ke WORLD_TRACKING, model tetap mengambang
+      this.arStateManager.setState(ARSTATES.WORLD_TRACKING);
+      console.log('[AstroAR] Marker hilang → WORLD_TRACKING. Model mengambang di world space.');
+    } else {
+      // Pose tidak valid → minta scan ulang
+      this._requestRescan();
+    }
+  }
+
+  // ─── World Tracking Error ────────────────────────────────────────────────────
+
+  _onTrackingLost() {
+    if (window.arUI) window.arUI.setShowRescanNotif(true);
+    this._requestRescan();
+  }
+
+  _requestRescan() {
+    this.arStateManager.setState(ARSTATES.WORLD_SCAN);
+    if (window.arUI) window.arUI.setShowRescanNotif(true);
+    this.eighthWallMgr.resetToWorldScan();
+
+    // Hapus model sementara saat rescan — data lama tidak valid
+    this._clearRescanTimer();
+    this._rescanTimer = setTimeout(() => {
+      if (this.arStateManager.is(ARSTATES.WORLD_SCAN)) {
+        // Masih belum dapat tracking → clear model
+        this._disposeCurrentModel();
+        if (window.arUI) {
+          window.arUI.setSelectedCelestial(null);
+          window.arUI.setCoordinateLocked(false);
+        }
+        this.coordinateLock.clear();
+      }
+    }, RESCAN_TIMEOUT_MS);
+
+    console.log('[AstroAR] Meminta scan ulang dunia...');
+  }
+
+  // ─── Model Loading ───────────────────────────────────────────────────────────
+
+  async _loadModel(celestialInfo, targetDetail) {
+    this._disposeCurrentModel();
     if (window.arUI) window.arUI.setLoadingModel(true);
 
     try {
-      let data;
-      if (index === 0) data = celestialData.earth;
-      else if (index === 1) data = celestialData.mars;
-      else return;
-
-      const modelPath = data.modelPath.startsWith('/') ? '.' + data.modelPath : data.modelPath;
+      const modelPath = celestialInfo.modelPath.replace(/^\/public/, '');
       const model = await this.modelLoader.loadModel(modelPath);
-      this.modelLoader.normalizeScale(model, data.displaySize ?? 0.15);
+      this.modelLoader.normalizeScale(model, celestialInfo.displaySize ?? 0.15);
 
+      // Double-side rendering agar terlihat dari segala sudut
       model.traverse((child) => {
         if (child.isMesh && child.material) {
-          child.material.side = THREE.DoubleSide;
+          child.material.side        = THREE.DoubleSide;
           child.material.needsUpdate = true;
         }
       });
 
       this.currentModelGroup = new THREE.Group();
       this.currentModelGroup.add(model);
+      this._scene.add(this.currentModelGroup);
 
+      // Posisikan di world coordinate sesuai pose target
+      this.coordinateLock.applyTo(this.currentModelGroup);
+
+      this.currentCelestial = celestialInfo;
       if (window.arUI) {
-        window.arUI.setSelectedCelestial(data);
+        window.arUI.setSelectedCelestial(celestialInfo);
         window.arUI.setLoadingModel(false);
       }
+
+      console.log(`[AstroAR] Model "${celestialInfo.name}" dimuat di world space.`);
     } catch (err) {
-      console.error(`[AstroAR] Gagal mengunduh model 3D untuk index ${index}:`, err);
+      console.error('[AstroAR] Gagal memuat model:', err);
       if (window.arUI) {
-        window.arUI.setLoadError('Gagal memuat model 3D. Periksa koneksi internet kamu dan coba scan ulang.');
+        window.arUI.setLoadError('Gagal memuat model 3D. Periksa koneksi dan coba scan ulang.');
       }
     }
   }
 
-  async _onTargetFound(anchorGroup, index) {
-    this.anchorGroup = anchorGroup;
+  // ─── Lock Coordinate (tombol manual) ────────────────────────────────────────
 
-    if (this.currentIndex !== index || !this.currentModelGroup) {
-      this.currentIndex = index;
-      await this._loadCelestialModelByIndex(index);
+  lockCoordinate() {
+    if (!this.coordinateLock.isLocked) {
+      console.warn('[AstroAR] Belum ada pose untuk di-lock.');
+      return;
     }
+    // Sudah di-lock otomatis saat target found — ini hanya konfirmasi state
+    this.arStateManager.setState(ARSTATES.COORDINATE_LOCKED);
+    if (window.arUI) window.arUI.setCoordinateLocked(true);
+    console.log('[AstroAR] Coordinate di-lock manual.');
+  }
 
-    if (this.currentModelGroup && this.arStateManager.getState() !== ARSTATES.TRACKED) {
-      this.handoverManager.handoverToLocal(this.currentModelGroup, this.anchorGroup);
+  // ─── Utilities ───────────────────────────────────────────────────────────────
+
+  _onRender() {
+    if (this.currentModelGroup && this.currentModelGroup.children.length > 0) {
+      // Rotasi pelan model planet pada porosnya (efek visual astronomi)
+      this.currentModelGroup.children[0].rotation.y += 0.005;
     }
   }
 
-  _onTargetLost(index) {
-    if (this.currentModelGroup && this.currentIndex === index && this.arStateManager.getState() === ARSTATES.TRACKED) {
-      this.handoverManager.handoverToWorld(this.currentModelGroup, this.anchorGroup);
-    }
-  }
-
-  resetView() {
+  _disposeCurrentModel() {
     if (this.currentModelGroup) {
       this.modelLoader.disposeModel(this.currentModelGroup);
+      this._scene?.remove(this.currentModelGroup);
       this.currentModelGroup = null;
-    }
-
-    if (this.alvaARManager) {
-      this.alvaARManager.resetSLAM();
-    }
-
-    // Reset kamera SLAM ke posisi awal
-    this.sceneManager.camera.position.set(0, 0, 0);
-    this.sceneManager.camera.quaternion.identity();
-
-    this.currentIndex = null;
-    this.anchorGroup = null;
-    this.arStateManager.setState(ARSTATES.SEARCHING);
-
-    if (window.arUI) {
-      window.arUI.setSelectedCelestial(null);
-      window.arUI.dismissError();
-      window.arUI.setLoadingModel(false);
     }
   }
 
-  _startRenderLoop() {
-    const animate = () => {
-      requestAnimationFrame(animate);
+  _clearMarkerLostTimer() {
+    if (this._markerLostTimer) {
+      clearTimeout(this._markerLostTimer);
+      this._markerLostTimer = null;
+    }
+  }
 
-      if (this.currentModelGroup) {
-        this.currentModelGroup.rotation.y += 0.005;
-      }
-
-      // Proses frame SLAM TERUS-MENERUS (bukan cuma pas state SLAM),
-      // supaya engine sempat "warm up" / mapping lingkungan dari awal.
-      if (this.alvaARManager?.isInitialized && this._frameCtx) {
-        const video = this.mindARManager.mindarThree.video;
-
-        if (video.readyState >= 2) { // pastikan video sudah punya frame valid
-          this._frameCtx.drawImage(video, 0, 0, this._frameCanvas.width, this._frameCanvas.height);
-          const frameData = this._frameCtx.getImageData(0, 0, this._frameCanvas.width, this._frameCanvas.height);
-          const pose = this.alvaARManager.processFrame(frameData);
-
-          if (pose) {
-            if (!this._lastPoseLocked) {
-              console.log('[AlvaAR] Pose SLAM Terkunci (Tracking Active)');
-              this._lastPoseLocked = true;
-            }
-            // Kamera di-update kalau state memang lagi SLAM
-            if (this.arStateManager.getState() === ARSTATES.SLAM) {
-              this.alvaARManager.updateCameraFromPose(pose, this.sceneManager.camera);
-            }
-          } else {
-            if (this._lastPoseLocked) {
-              console.log('[AlvaAR] Pose SLAM Terputus (Mencari fitur visual...)');
-              this._lastPoseLocked = false;
-            }
-          }
-        }
-      }
-
-      this.sceneManager.render();
-    };
-
-    animate();
+  _clearRescanTimer() {
+    if (this._rescanTimer) {
+      clearTimeout(this._rescanTimer);
+      this._rescanTimer = null;
+    }
   }
 }
 
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', () => {
   const app = new AppBootstrapper();
-  app.start();
+  app.start().catch(err => {
+    console.error('[AstroAR] Fatal error saat boot:', err);
+  });
 });

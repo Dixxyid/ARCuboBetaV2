@@ -15,9 +15,11 @@
   --text-muted: #94a3b8;
   --accent-cyan: #00f0ff;
   --accent-blue: #3b82f6;
-  --status-searching: #f59e0b;
-  --status-tracked: #10b981;
-  --status-slam: #8b5cf6;
+  --status-world-scan: #38bdf8;
+  --status-marker-scan: #f59e0b;
+  --status-coordinate-locked: #10b981;
+  --status-validating: #a855f7;
+  --status-world-tracking: #6366f1;
 }
 
 html, body {

@@ -51,19 +51,29 @@
   transition: background-color 0.3s ease;
 }
 
-.dot-indicator.searching {
-  background-color: var(--status-searching);
-  color: var(--status-searching);
+.dot-indicator.world_scan {
+  background-color: var(--status-world-scan);
+  color: var(--status-world-scan);
 }
 
-.dot-indicator.tracked {
-  background-color: var(--status-tracked);
-  color: var(--status-tracked);
+.dot-indicator.marker_scan {
+  background-color: var(--status-marker-scan);
+  color: var(--status-marker-scan);
 }
 
-.dot-indicator.slam {
-  background-color: var(--status-slam);
-  color: var(--status-slam);
+.dot-indicator.coordinate_locked {
+  background-color: var(--status-coordinate-locked);
+  color: var(--status-coordinate-locked);
+}
+
+.dot-indicator.validating {
+  background-color: var(--status-validating);
+  color: var(--status-validating);
+}
+
+.dot-indicator.world_tracking {
+  background-color: var(--status-world-tracking);
+  color: var(--status-world-tracking);
 }
 
 .status-badge {
@@ -126,13 +136,119 @@
   border-width: 0 3px 3px 0;
 }
 
+.scanner-box.surface {
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+}
+
+.scanner-box.surface .corner {
+  border-color: var(--status-world-scan);
+}
+
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--status-world-scan) 50%, transparent 100%);
+  box-shadow: 0 0 10px var(--status-world-scan), 0 0 20px var(--status-world-scan);
+  animation: scanSurface 2s ease-in-out infinite alternate;
+}
+
+@keyframes scanSurface {
+  0% {
+    top: 5%;
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 95%;
+    opacity: 0.3;
+  }
+}
+
 .guide-text {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.4);
-  padding: 6px 14px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.55);
+  padding: 6px 16px;
   border-radius: 20px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.guide-subtext {
+  font-size: 0.75rem;
+  color: var(--status-world-scan);
+  background: rgba(15, 23, 42, 0.65);
+  padding: 4px 12px;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  letter-spacing: 0.5px;
+}
+
+/* Floating Rescan Notification */
+.rescan-notif {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  font-size: 0.82rem;
+  color: #fca5a5;
+  background: rgba(30, 10, 15, 0.75);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2);
+  z-index: 20;
+}
+
+.rescan-notif .icon.warn {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+/* Floating Lock Indicator */
+.lock-indicator {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--status-coordinate-locked);
+  background: rgba(6, 44, 28, 0.7);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.lock-indicator .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.glass-button.secondary.locked {
+  color: var(--status-coordinate-locked);
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
 }
 
 /* Footer Action Bar */

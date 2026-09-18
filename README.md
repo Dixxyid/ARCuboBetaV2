@@ -4,8 +4,8 @@
 ![Status](https://img.shields.io/badge/status-Active--Development-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-Academic-orange?style=for-the-badge)
 
-> **Dokumentasi Proyek WebAR Spatial Flashcard & Extended Tracking System**  
-> *Pembaruan Terakhir: 28 Agustus 2026*
+> **Platform Edukasi WebAR Astronomi Berbasis Kartu Fisik & Extended SLAM Tracking**  
+> Menggunakan **8th Wall Engine murni (SLAM World Tracking + Image Targets)** terintegrasi dengan **Three.js** dan **Alpine.js**.
 
 ---
 
@@ -14,110 +14,133 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white)
 ![Three.js](https://img.shields.io/badge/Three.js-000000?style=flat-square&logo=three.js&logoColor=white)
+![8th Wall](https://img.shields.io/badge/8th%20Wall-XR8%20Engine-FF4081?style=flat-square)
 ![Alpine.js](https://img.shields.io/badge/Alpine.js-8BC0D0?style=flat-square&logo=alpine.js&logoColor=black)
 ![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?style=flat-square&logo=webassembly&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
-![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
 
 ---
 
-## 📌 Ringkasan Sistem
+## ✨ Fitur Utama
 
-> [!NOTE]
-> **ARCuboBetaV2** adalah platform edukasi WebAR *zero-install* berbasis browser seluler. Fitur utamanya adalah **Extended Tracking (Matrix Handover)** yang memindahkan koordinat objek 3D secara transparan dari kartu fisik (*MindAR*) ke permukaan dunia nyata (*AlvaAR Visual SLAM*).
+1. **Zero-Install WebAR**: Berjalan langsung di peramban web seluler (Chrome Android, Safari iOS) tanpa perlu mengunduh aplikasi tambahan dari Play Store / App Store.
+2. **Unified Spatial Coordinate System**: Pelacakan kartu fisik (*Image Targets*) dan pelacakan ruangan (*Visual SLAM*) berbagi satu sistem koordinat spasial 3D yang sama dari 8th Wall XR8.
+3. **Automatic Coordinate Lock**: Ketika kartu dikenali, posisi spasialnya otomatis terkunci di dunia nyata.
+4. **Seamless Markerless Handover**: Jika kartu tersembunyi atau hilang dari bidikan kamera, model planet 3D tetap mengambang di lokasi kartu sebelumnya di ruangan Anda (*World Tracking*).
+5. **Drift & Drift Recovery**: Sistem memvalidasi jarak pose terhadap kamera; jika terjadi pergeseran posisi abnormal, sistem memberikan notifikasi cerdas untuk memindai ulang permukaan.
+6. **Smooth Planet Self-Rotation**: Objek planet berputar halus pada porosnya secara kontinu untuk visualisasi astronomi yang dinamis.
+7. **Futuristic Glassmorphism HUD**: Tampilan antarmuka transparan dengan animasi laser scanner, indikator status neon, modal data astronomi, dan tautan rujukan ilmiah (DOI resmi).
+
+---
+
+## 🔄 Alur Finite State Machine (FSM)
+
+```text
+WORLD_SCAN (8th Wall memetakan permukaan lantai/meja dunia nyata)
+    ↓ (Permukaan stabil terdeteksi)
+MARKER_SCAN (8th Wall mencari kartu flashcard planet)
+    ↓ (Kartu terdeteksi)
+COORDINATE_LOCKED (Koordinat kartu dikunci di ruang 3D, tombol status menjadi "Terkunci ✓")
+    ↓ (Kartu tertutup / keluar dari bidikan kamera)
+VALIDATING (Validasi toleransi jarak kamera terhadap posisi objek)
+    ├── Drift / Data tidak valid → WORLD_SCAN (Scan ulang permukaan + notifikasi peringatan)
+    └── Kartu benar-benar hilang → WORLD_TRACKING (Model 3D tetap mengambang di ruang nyata)
+```
+
+---
+
+## 🎴 Target Kartu Flashcard
+
+| Objek | File Target Gambar | Model 3D | Dimensi Target |
+|---|---|---|---|
+| **Bumi (Earth)** | `public/targets/raw_images/0_earth_card.png` | `public/models/solar_system/earth.glb` | 638 × 1016 px (Vertikal) |
+| **Mars** | `public/targets/raw_images/1_mars_card.png` | `public/models/solar_system/mars.glb` | 638 × 1016 px (Vertikal) |
 
 ---
 
 ## 📂 Pohon Direktori Proyek
 
 ```text
-ar-flashcard-project/
-├── 📂 public/                     # 🟡 ASET STATIS (Bypass Vite Bundler)
-│   ├── 📁 alva/
-│   │   ├── 📄 alva_ar.js          # ⚙️ Script utama AlvaAR (Markerless SLAM)
-│   │   └── 📄 alva_ar_three.js    # ⚙️ Wrapper AlvaAR untuk integrasi Three.js
-│   ├── 📁 models/
-│   │   ├── 📁 solar_system/       # 🪐 Objek 3D planet (.glb)
-│   │   │   ├── 📄 earth.glb
-│   │   │   └── 📄 mars.glb
-│   │   └── 📁 placeholders/
-│   ├── 📁 targets/
-│   │   ├── 📄 flashcards.mind     # 🎯 Target kompilasi gambar MindAR
-│   │   └── 📂 raw_images/         # 🗄️ (Opsional) Arsip gambar PNG flashcard mentah
-│   │       ├── 📄 0_earth_card.png
-│   │       └── 📄 1_mars_card.png
-│   └── 📁 materials/
-│       └── 📄 pp_dev.webp         # 👤 Foto profil pengembang
+ARCuboBetaV2/
+├── 📂 public/                     # 🟡 ASET STATIS & BINER ENGINE
+│   ├── 📁 xr/                     # ⚙️ Biner lokal 8th Wall (xr.js, xr-slam.js, xr-tracking.js)
+│   ├── 📁 models/                 # 🪐 Objek 3D planet (.glb)
+│   │   └── 📁 solar_system/       # earth.glb, mars.glb
+│   ├── 📁 targets/                # 🎯 Gambar target flashcard
+│   │   └── 📂 raw_images/         # 0_earth_card.png, 1_mars_card.png
+│   ├── 📁 materials/              # Aset tekstur & foto profil pengembang
+│   └── 📄 _headers                # Konfigurasi COOP/COEP/CORS untuk Netlify
 │
 ├── 📂 src/                        # 🟢 KODE SUMBER UTAMA
 │   ├── 📁 ar/                     # 🧮 LOGIKA AR & MATRIKS SPASIAL
-│   │   ├── 📄 MindARManager.js    # Pengelola lifecycle & event MindAR
-│   │   ├── 📄 AlvaARManager.js    # Pengelola lifecycle & WASM AlvaAR
-│   │   ├── 📄 HandoverManager.js  # 🔥 Logika serah terima Local -> World Matrix
-│   │   └── 📄 ARState.js          # Finite State Machine (SEARCHING, TRACKED, SLAM)
-│   ├── 📁 core/                   # 🎮 ENGINE THREE.JS & RENDERING
-│   │   ├── 📄 Scene.js            # Instansiasi Scene, Camera, & WebGLRenderer
-│   │   ├── 📄 Lighting.js         # Pencahayaan PBR (Ambient & Directional)
-│   │   └── 📄 ModelLoader.js      # Utility GLTFLoader & Manajemen Memori GPU
+│   │   ├── 📄 ARState.js          # Finite State Machine (5 state AR)
+│   │   ├── 📄 CoordinateLock.js   # Penyimpanan pose & validasi drift koordinat dunia
+│   │   └── 📄 EighthWallManager.js# Pipeline 8th Wall (GlTexture, Threejs, XrController)
+│   ├── 📁 core/                   # 🎮 RENDERING & PBR LIGHTING
+│   │   ├── 📄 Lighting.js         # Pencahayaan Three.js (Ambient, Sun, & Fill Light)
+│   │   └── 📄 ModelLoader.js      # Loader GLTF, auto-scaling & manajemen memori GPU
 │   ├── 📁 data/                   # 📚 DATASET ILMIAH & LITERATUR
-│   │   └── 📄 celestialData.js    # Dataset JSON astrofisika & rujukan DOI
-│   ├── 📁 ui/                     # 🖥️ ANTARMUKA REAKTF (ALPINE.JS)
-│   │   └── 📄 uiState.js          # Inisialisasi Alpine.js store & data handler
+│   │   └── 📄 celestialData.js    # Data astrofisika planet & referensi DOI resmi
+│   ├── 📁 ui/                     # 🖥️ ANTARMUKA REAKTIF (ALPINE.JS)
+│   │   └── 📄 uiState.js          # Store Alpine.js untuk status HUD & interaksi modal
 │   ├── 📁 styles/                 # 🎨 CSS MODULAR & GLASSMORPHISM
-│   │   ├── 📄 main.css            # Setup layout & canvas 100vw/100vh
-│   │   ├── 📄 glassmorphism.css   # Effect backdrop-filter & aksen neon
-│   │   └── 📄 hud.css             # Modal & overlay positioning
-│   └── 📄 main.js                 # ⚡ BOOTSTRAPPER (Entry point utama)
+│   │   ├── 📄 main.css            # Setup layout & tokens warna status AR
+│   │   ├── 📄 glassmorphism.css   # Efek backdrop blur & aksen neon
+│   │   └── 📄 hud.css             # HUD overlay, scanner laser line, badge lock
+│   └── 📄 main.js                 # ⚡ BOOTSTRAPPER (Entry point & rotasi per-frame)
 │
-├── 📄 .gitignore                  # File/Folder yang diabaikan oleh Git
-├── 📄 index.html                  # Container HTML5 & Lapisan DOM Alpine.js
-├── 📄 package.json                # Dependensi proyek (Three.js, MindAR, Alpine.js)
-├── 📄 vite.config.js              # Konfigurasi bundler Vite
-└── 📄 README.md                   # Dokumentasi resmi proyek
+├── 📂 .github/workflows/          # 🤖 CI/CD Otomatis
+│   └── 📄 deploy.yml              # Auto-deploy ke GitHub Pages saat push
+├── 📄 netlify.toml                # Konfigurasi build & header untuk Netlify
+├── 📄 vite.config.js              # Konfigurasi bundler Vite (base: './')
+├── 📄 index.html                  # Container HTML5, preload XR8, & HUD Alpine
+└── 📄 package.json                # Dependensi proyek
 ```
----
-
-## 🏗️ Catatan Arsitektur
-
-> [!TIP]
-> **Separation of Concerns:**
-> Struktur direktori di atas dirancang dengan prinsip modularitas tinggi. Logika Augmented Reality, rendering Three.js, dan antarmuka UI dipisahkan secara tegas agar kode mudah dipelihara, diuji, dan di-debug.
->
-> **Manajemen Aset Statis:**
-> Sangat disarankan untuk tidak mengubah letak file di dalam folder `public/`. Aset komputasi berat seperti biner `.wasm` (AlvaAR) dan model 3D `.glb` dikonfigurasi untuk melakukan pembacaan langsung (*direct fetch* / *bypass bundler*). Hal ini krusial demi menjaga stabilitas *frame rate* (FPS) dan mencegah masalah manajemen memori (*memory leaks*) pada perangkat peramban seluler.
 
 ---
 
-# 🎨 Desain Sistem UI/UX ARCuboBetaV2
+## 🛠️ Menjalankan di Lingkungan Lokal (Pengembangan)
 
-Dokument dan pedoman desain antarmuka (UI) dan pengalaman pengguna (UX) untuk platform **ARCuboBetaV2**.
+```bash
+# 1. Install seluruh dependensi
+npm install
 
-## 🌌 Tema Visual
-> **Futuristic Space & Glassmorphism**
+# 2. Jalankan development server
+npm run dev
 
-## 🖥️ Gaya Antarmuka 
-| Elemen | Karakteristik | Deskripsi |
-| :--- | :--- | :--- |
-| 🪞 | **Glassmorphism** | Efek transparan berlapis dengan batas halus untuk tampilan modern. |
-| 🌫️ | **Translucency** | Efek *blur* (kaca buram) pada latar belakang agar teks UI tetap jelas di atas kamera seluler. |
-| 📱 | **Flat Design** | Desain elemen tombol dan ikon yang bersih, simpel, dan responsif. |
+# 3. Akses dari HP (koneksikan laptop dan HP ke Wi-Fi yang sama):
+# Buka URL Network yang tertera di terminal, contoh: http://192.168.x.x:5173
+```
 
-## 🎨 Palet Warna
-| Preview | Hex Code | Nama & Penggunaan |
-| :---: | :--- | :--- |
-| 🟪 | `#8A2BE2` | **Ungu**: Warna utama antarmuka berkesan futuristik dan nuansa antariksa. |
-| 🟦 | `#00D2FF` | **Biru**: Warna aksen interaktif, status koneksi, dan pemindaian AR. |
-| 🟨 | `#FFD700` | **Kuning**: Warna sorotan untuk tombol aksi utama dan informasi penting. |
-| ⬜ | `#FFFFFF` | **Putih**: Warna teks utama untuk tingkat keterbacaan tinggi di latar belakang dinamis. |
+---
 
-## 🔤 Tipografi
-* **`Inter`** — Font UI utama untuk navigasi dan deskripsi singkat.
-* **`Roboto`** — Font teknis untuk penulisan angka, data numerik, dan parameter AR.
-* **`Montserrat`** — Font tegas untuk judul (*heading*) dan penamaan komponen.
+## 🚀 Panduan Deployment ke Internet
 
-## 🎴 Standar Flashcard Fisik
-* 📐 **Rasio Standar**: Mempertahankan proporsi standar kartu fisik.
-* ✨ **Kontras Tinggi** (*High-Feature Points*): Mengoptimalkan pelacakan dan deteksi titik fitur (*feature points*) pada kamera AR.
+### Opsi 1: Netlify (Sangat Direkomendasikan)
+1. Hubungkan repositori GitHub Anda ke Netlify.
+2. Netlify akan otomatis membaca konfigurasi dari file [`netlify.toml`](file:///e:/Github/ARCuboBetaV2/netlify.toml).
+3. Klik tombol **Deploy Site**. Aplikasi WebAR Anda langsung aktif dengan HTTPS dan dukungan WebAssembly penuh.
+
+### Opsi 2: GitHub Pages (Otomatis via GitHub Actions)
+1. Pastikan Anda telah melakukan *push* kode ke GitHub:
+   ```bash
+   git add .
+   git commit -m "feat: complete pure 8th wall webar system"
+   git push origin main
+   ```
+2. Buka repositori Anda di web GitHub > **Settings** > **Pages**.
+3. Pada menu **Build and deployment > Source**, pilih **GitHub Actions**.
+4. Workflow [`.github/workflows/deploy.yml`](file:///e:/Github/ARCuboBetaV2/.github/workflows/deploy.yml) akan otomatis meng-compile dan mempublikasikan situs Anda dalam 1–2 menit.
+
+---
+
+## 📖 Cara Penggunaan di Perangkat
+
+1. **Izinkan Akses Kamera**: Buka URL aplikasi di peramban seluler dan berikan izin akses kamera.
+2. **Scan Permukaan Ruangan**: Arahkan dan gerakkan kamera perlahan ke meja atau lantai hingga panduan laser scanner beralih ke mode pencarian kartu (*Cari Flashcard*).
+3. **Arahkan ke Kartu Flashcard**: Sorot kartu Bumi atau Mars. Model 3D planet akan langsung muncul di atas kartu disertai animasi rotasi poros.
+4. **Kunci Koordinat**: Posisi telah otomatis terkunci (*Terkunci ✓*). Anda juga dapat menekan tombol **Lock Coordinate** kapan saja untuk mengonfirmasi posisi.
+5. **Eksplorasi Dunia Nyata**: Geser atau sembunyikan kartu fisiknya; planet akan tetap mengambang stabil di udara pada koordinat ruangan Anda.
+6. **Buka Data Astronomi**: Tekan tombol **Data Astronomi** untuk membaca spesifikasi ilmiah planet (massa, radius, jarak, suhu) serta tautan langsung ke publikasi jurnal bereputasi (DOI).
 
 ---
 

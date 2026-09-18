@@ -1,0 +1,23 @@
+{
+  "name": "arcubobetav2",
+  "version": "1.0.0",
+  "description": "![Version](https://img.shields.io/badge/version-v2.0.0--beta-00f3ff?style=for-the-badge)\r ![Status](https://img.shields.io/badge/status-Active--Development-green?style=for-the-badge)\r ![License](https://img.shields.io/badge/license-Academic-orange?style=for-the-badge)",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^6.4.3"
+  },
+  "dependencies": {
+    "@8thwall/engine": "^0.1.0",
+    "@8thwall/engine-binary": "^1.0.0",
+    "alpinejs": "^3.17.3",
+    "three": "^0.160.0"
+  }
+}

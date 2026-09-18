@@ -1,16 +1,26 @@
-
 /**
- * Finite State Machine (FSM) untuk Mengelola Mode AR Tracking & SLAM
+ * Finite State Machine (FSM) — AR State untuk 8th Wall + Image Targets
+ *
+ * Alur:
+ * WORLD_SCAN → MARKER_SCAN → COORDINATE_LOCKED
+ *                                  ↓ (marker hilang sementara)
+ *                             VALIDATING
+ *                            ↙         ↘
+ *                    WORLD_SCAN    WORLD_TRACKING
+ *                  (data invalid)  (marker benar hilang)
  */
+
 export const ARSTATES = {
-  SEARCHING: 'SEARCHING', // Mencari target gambar (Flashcard)
-  TRACKED: 'TRACKED',     // Target terdeteksi, terkunci pada kartu
-  SLAM: 'SLAM'           // Berpindah ke World Coordinate (Markerless Tracking)
+  WORLD_SCAN:          'WORLD_SCAN',          // 8th Wall scan permukaan (SLAM warm-up)
+  MARKER_SCAN:         'MARKER_SCAN',          // Mencari image target (flashcard)
+  COORDINATE_LOCKED:   'COORDINATE_LOCKED',    // Marker ketemu, pose di-lock di world space
+  VALIDATING:          'VALIDATING',           // Marker hilang sementara, cek validitas data
+  WORLD_TRACKING:      'WORLD_TRACKING',       // Marker hilang total, 8th Wall world tracking aktif
 };
 
 export class ARStateManager {
   constructor(onChangeCallback = null) {
-    this.currentState = ARSTATES.SEARCHING;
+    this.currentState = ARSTATES.WORLD_SCAN;
     this.onChangeCallback = onChangeCallback;
   }
 
@@ -20,9 +30,9 @@ export class ARStateManager {
 
   setState(newState) {
     if (this.currentState === newState) return;
-    
+
     if (Object.values(ARSTATES).includes(newState)) {
-      console.log(`[ARState] Transisi State: ${this.currentState} -> ${newState}`);
+      console.log(`[ARState] ${this.currentState} → ${newState}`);
       this.currentState = newState;
       if (this.onChangeCallback) {
         this.onChangeCallback(this.currentState);
@@ -30,5 +40,9 @@ export class ARStateManager {
     } else {
       console.warn(`[ARState] State tidak valid: ${newState}`);
     }
+  }
+
+  is(state) {
+    return this.currentState === state;
   }
 }
