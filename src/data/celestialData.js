@@ -45,5 +45,19 @@ export const celestialData = {
     defaultRotation: [Math.PI / 2, 0, 0],
     description: "Satelit alami satu-satunya Bumi dan satelit alami terbesar kelima di Tata Surya. Berperan penting dalam menstabilkan kemiringan sumbu Bumi dan menciptakan pasang surut laut.",
     doi: "10.1038/nature07842"
+  },
+  sun: {
+    id: "sun",
+    name: "Matahari (Sun)",
+    category: "Bintang (Spektral G2V)",
+    mass: "1.989 × 10³⁰ kg",
+    radius: "696,340 km",
+    semiMajorAxis: "Pusat Tata Surya (0 AU)",
+    surfaceTemp: "5,778 K (5,505 °C)",
+    modelPath: "./models/solar_system/sun.glb",
+    displaySize: 0.95,
+    defaultRotation: [Math.PI / 2, 0, 0],
+    description: "Bintang deret utama di pusat Tata Surya yang menyumbang sekitar 99.86% dari massa total seluruh sistem. Menghasilkan energi radiasi raksasa melalui fusi hidrogen menjadi helium di intinya.",
+    doi: "10.1038/s41586-020-03043-4"
   }
 };

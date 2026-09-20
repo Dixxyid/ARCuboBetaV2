@@ -181,8 +181,9 @@ export class EighthWallManager {
       listeners: [
         {
           event: 'reality.imagefound',
-          process: ({ detail }) => {
-            console.log('[8thWall] Image target ditemukan:', detail.name);
+          process: (event) => {
+            const detail = event?.detail || event;
+            console.log('[8thWall] Image target ditemukan:', detail?.name);
             if (self.callbacks.onTargetFound) {
               self.callbacks.onTargetFound(detail);
             }
@@ -192,7 +193,8 @@ export class EighthWallManager {
         // ── Image Target: Update posisi ──
         {
           event: 'reality.imageupdated',
-          process: ({ detail }) => {
+          process: (event) => {
+            const detail = event?.detail || event;
             if (self.callbacks.onTargetUpdated) {
               self.callbacks.onTargetUpdated(detail);
             }
@@ -202,8 +204,9 @@ export class EighthWallManager {
         // ── Image Target: Hilang ──
         {
           event: 'reality.imagelost',
-          process: ({ detail }) => {
-            console.log('[8thWall] Image target hilang:', detail.name);
+          process: (event) => {
+            const detail = event?.detail || event;
+            console.log('[8thWall] Image target hilang:', detail?.name);
             if (self.callbacks.onTargetLost) {
               self.callbacks.onTargetLost(detail);
             }

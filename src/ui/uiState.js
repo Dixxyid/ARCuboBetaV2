@@ -32,17 +32,18 @@ export function initUIStore() {
 
       // ── State Setters ───────────────────────────────────────────────────────
 
-      setTrackingState(state) {
+      setTrackingState(state, customText = null) {
         this.trackingState = state;
         const labels = {
           SURFACE_SCAN:     'Scan Permukaan (4 Arah)...',
           SURFACE_CONFIRM:  'Permukaan Terpetakan ✓',
           MARKER_SCAN:      'Arahkan ke Flashcard...',
-          MARKER_TRACKING:  'Marker Terdeteksi',
+          MARKER_TRACKING:  customText || 'Marker Terdeteksi',
+          SLAM_COLLECTING:  'Mengumpulkan Data SLAM...',
           SLAM_LOCKED:      'SLAM World Anchor Terkunci ✓',
           VALIDATING:       'Memvalidasi Data...',
         };
-        this.trackingStatusText = labels[state] || state;
+        this.trackingStatusText = customText || labels[state] || state;
 
         if (state === 'SURFACE_CONFIRM') {
           this.showSurfaceDoneModal = true;

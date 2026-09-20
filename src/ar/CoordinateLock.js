@@ -36,13 +36,14 @@ export class CoordinateLock {
     this._candidatePosition   = new THREE.Vector3();
     this._candidateQuaternion = new THREE.Quaternion();
 
-    // ── Parameter Stabilisasi (Normal Tracking) ──
-    this.DEADBAND_POS_METERS = 0.002;  // 2 mm — filter gerak super kecil
-    this.DEADBAND_ROT_RAD    = 0.0087; // ~0.5 derajat
-    this.MAX_POS_JUMP_METERS = 0.30;   // 30 cm — batas jump outlier
+    // ── Parameter Stabilisasi Adaptif (Dual-Speed 1-Euro Principle) ──
+    this.DEADBAND_POS_METERS = 0.0015; // 1.5 mm — filter micro-tremor tangan/kamera
+    this.DEADBAND_ROT_RAD    = 0.006;  // ~0.35 derajat — filter micro-rotasi
+    this.MAX_POS_JUMP_METERS = 0.35;   // 35 cm — batas toleransi jump outlier
     this.OUTLIER_CONFIRMATION_FRAMES = 4;
     this._outlierCount = 0;
-    this.SMOOTH_LAMBDA = 14.0;         // Koefisien EMA LERP (~14 = responsif & halus)
+    this.MIN_LAMBDA = 8.0;             // Saat kartu diam: peredaman tinggi, rock-solid (0 jitter)
+    this.MAX_LAMBDA = 28.0;            // Saat kartu bergerak: respon tinggi instan (0 lag)
     this.MAX_DRIFT_METERS = 15.0;
 
     // ── Parameter Stabilisasi (Mode Collecting — lebih ketat) ──
@@ -60,6 +61,13 @@ export class CoordinateLock {
     this._poseHistory = [];
     this._collectFrameCount = 0;
     this._onCollectionDone = null;
+
+    // ── Watchdog Heartbeat Tracking ──
+    // Menghitung waktu sejak update optik terakhir dari kamera.
+    // Jika tidak ada update dalam 250ms (~15 frame), target dianggap hilang seketika!
+    this._lastSeenTime = 0;
+    this.TRACKING_TIMEOUT_MS = 250;
+    this.onTrackingLost = null;
   }
 
   /**
@@ -72,13 +80,13 @@ export class CoordinateLock {
     if (position) {
       this._candidatePosition.set(position.x, position.y, position.z);
       this._targetPosition.copy(this._candidatePosition);
-      this._currentPosition.copy(this._candidatePosition);
+      this._currentPosition.copy(this._candidatePosition); // Snap langsung
     }
 
     if (rotation) {
       this._candidateQuaternion.set(rotation.x, rotation.y, rotation.z, rotation.w).normalize();
       this._targetQuaternion.copy(this._candidateQuaternion);
-      this._currentQuaternion.copy(this._candidateQuaternion);
+      this._currentQuaternion.copy(this._candidateQuaternion); // Snap langsung
     }
 
     const initialScale = this._parseScale(scale);
@@ -87,17 +95,19 @@ export class CoordinateLock {
 
     this._targetName = name;
     this._timestamp  = Date.now();
+    this._lastSeenTime = performance.now();
     this._locked     = true;
     this._isTracking = true;
+    this._justFound  = true; // Flag: snap ke posisi marker tanpa lerp di frame pertama
     this._outlierCount = 0;
     // Jangan reset poseHistory jika sedang collecting — biarkan terus akumulasi
     if (!this._isCollecting) {
-      this._poseHistory  = [];
+      this._poseHistory = [];
     }
 
     this._recordPose(this._currentPosition, this._currentQuaternion);
 
-    console.log(`[CoordinateLock] Pose terkunci untuk "${name}" di`, this._currentPosition);
+    console.log(`[CoordinateLock] Pose dikunci untuk "${name}" — snap ke`, this._currentPosition);
   }
 
   /**
@@ -108,6 +118,7 @@ export class CoordinateLock {
   update(detail) {
     if (!this._locked) return;
     this._isTracking = true;
+    this._lastSeenTime = performance.now();
 
     // Jika sedang dalam mode SLAM_LOCKED, abaikan update optik kartu sama sekali
     // agar derau optik/sudut pandang kamera tidak menggeser anchor yang kokoh!
@@ -328,9 +339,12 @@ export class CoordinateLock {
    * Notifikasi marker lepas dari pandangan kamera (reality.imagelost)
    */
   setTargetLost() {
-    this._isTracking = false;
+    this._isTracking   = false;
+    this._justFound    = false;
     this._outlierCount = 0;
+    this._lastSeenTime = 0;
     if (!this._slamLocked) {
+      // Bekukan target pada posisi terakhir yang valid (jangan lerp ke mana-mana)
       this._targetPosition.copy(this._currentPosition);
       this._targetQuaternion.copy(this._currentQuaternion);
     }
@@ -348,19 +362,58 @@ export class CoordinateLock {
     // Jika sedang dalam SLAM_LOCKED, matriks sudah dibekukan kaku, tidak perlu diubah
     if (this._slamLocked) return;
 
-    // Jika marker tidak terlihat DAN bukan dalam mode collecting/slam — sembunyikan objek
+    // ── Watchdog Timeout Check ──
+    // Jika tidak ada frame update optik dalam TRACKING_TIMEOUT_MS (~250ms),
+    // target otomatis dideklarasikan HILANG seketika tanpa menunggu event engine!
+    if (this._isTracking && (performance.now() - this._lastSeenTime > this.TRACKING_TIMEOUT_MS)) {
+      this.setTargetLost();
+      if (this.onTrackingLost) {
+        this.onTrackingLost(this._targetName);
+      }
+    }
+
+    // ── Guard Visibilitas Utama ──
+    // Objek HANYA terlihat jika marker sedang aktif terlihat di kamera
+    // atau sedang dalam fase collecting (marker harus ada)
     if (!this._isTracking && !this._isCollecting) {
-      anchorGroup.visible = false;
+      if (anchorGroup.visible) anchorGroup.visible = false; // enforce hide
       return;
     }
 
-    anchorGroup.visible = true;
-    const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
-    const alpha  = 1.0 - Math.exp(-this.SMOOTH_LAMBDA * safeDt);
+    if (!anchorGroup.visible) anchorGroup.visible = true; // enforce show
 
-    this._currentPosition.lerp(this._targetPosition, alpha);
-    this._currentQuaternion.slerp(this._targetQuaternion, alpha);
-    this._currentScale.lerp(this._targetScale, alpha);
+    // ── Snap vs Lerp ──
+    // Frame pertama setelah marker ditemukan: snap langsung tanpa lerp
+    // agar objek tidak "melayang" dari posisi lama ke posisi baru
+    if (this._justFound) {
+      this._justFound = false;
+      anchorGroup.position.copy(this._currentPosition);
+      anchorGroup.quaternion.copy(this._currentQuaternion);
+      anchorGroup.scale.copy(this._currentScale);
+      return;
+    }
+
+    const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
+
+    // ── Adaptive Dual-Speed Filter (1-Euro Principle) ──
+    // Kecepatan rendah (diam / jitter tangan): lambda rendah (~8) → sangat kokoh & stabil
+    // Kecepatan tinggi (kartu digerakkan cepat): lambda tinggi (~28) → sangat responsif tanpa visual lag
+    const posDist = this._currentPosition.distanceTo(this._targetPosition);
+    const speed = posDist / safeDt;
+    const speedFactor = Math.min(speed / 0.12, 1.0); // saturasi pada kecepatan 12 cm/s
+    const dynamicLambda = THREE.MathUtils.lerp(this.MIN_LAMBDA, this.MAX_LAMBDA, speedFactor);
+    const alphaPos = 1.0 - Math.exp(-dynamicLambda * safeDt);
+
+    // Rotasi adaptif: redam micro-wobble sudut saat diam, ikuti cepat saat kartu diputar
+    const rotAngle = this._currentQuaternion.angleTo(this._targetQuaternion);
+    const rotSpeed = rotAngle / safeDt;
+    const rotFactor = Math.min(rotSpeed / 2.0, 1.0);
+    const dynamicRotLambda = THREE.MathUtils.lerp(10.0, 26.0, rotFactor);
+    const alphaRot = 1.0 - Math.exp(-dynamicRotLambda * safeDt);
+
+    this._currentPosition.lerp(this._targetPosition, alphaPos);
+    this._currentQuaternion.slerp(this._targetQuaternion, alphaRot);
+    this._currentScale.lerp(this._targetScale, alphaPos);
 
     anchorGroup.position.copy(this._currentPosition);
     anchorGroup.quaternion.copy(this._currentQuaternion);
@@ -394,6 +447,7 @@ export class CoordinateLock {
   get isSlamLocked()   { return this._slamLocked; }
   get isCollecting()   { return this._isCollecting; }
   get isTracking()     { return this._isTracking; }
+  get lastSeenTime()   { return this._lastSeenTime; }
   get collectProgress(){ return this._isCollecting ? Math.min(this._collectFrameCount / this.SLAM_COLLECT_TARGET, 1.0) : 0; }
   get position()       { return this._currentPosition.clone(); }
   get quaternion()     { return this._currentQuaternion.clone(); }

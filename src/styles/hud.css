@@ -51,9 +51,15 @@
   transition: background-color 0.3s ease;
 }
 
-.dot-indicator.world_scan {
+.dot-indicator.world_scan,
+.dot-indicator.surface_scan {
   background-color: var(--status-world-scan);
   color: var(--status-world-scan);
+}
+
+.dot-indicator.surface_confirm {
+  background-color: #00ffcc;
+  color: #00ffcc;
 }
 
 .dot-indicator.marker_scan {
@@ -61,7 +67,18 @@
   color: var(--status-marker-scan);
 }
 
-.dot-indicator.coordinate_locked {
+.dot-indicator.marker_tracking {
+  background-color: #00ff88;
+  color: #00ff88;
+}
+
+.dot-indicator.slam_collecting {
+  background-color: #ffaa00;
+  color: #ffaa00;
+}
+
+.dot-indicator.coordinate_locked,
+.dot-indicator.slam_locked {
   background-color: var(--status-coordinate-locked);
   color: var(--status-coordinate-locked);
 }

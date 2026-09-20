@@ -59,6 +59,14 @@ export class GestureManager {
     }
   }
 
+  reset() {
+    this.isDragging = false;
+    this.isPinching = false;
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this.activeTouches.clear();
+  }
+
   // ─── Event Binding ──────────────────────────────────────────────────────────
 
   _bindEvents() {
@@ -182,14 +190,22 @@ export class GestureManager {
    * Raycasting dari sentuhan layar ke model 3D untuk deteksi ketukan
    */
   _checkTapRaycast(clientX, clientY) {
-    if (!this.camera || !this.targetObject || !this.onTap) return;
+    if (!this.camera || !this.onTap) return;
+
+    let candidates = [];
+    if (typeof this.interactiveObjectsProvider === 'function') {
+      candidates = this.interactiveObjectsProvider() || [];
+    } else if (this.targetObject) {
+      candidates = this.targetObject.children || [];
+    }
+    if (!candidates || candidates.length === 0) return;
 
     const rect = this.canvas.getBoundingClientRect();
     this.mouseVec.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     this.mouseVec.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouseVec, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.targetObject.children, true);
+    const intersects = this.raycaster.intersectObjects(candidates, true);
 
     if (intersects.length > 0) {
       console.log('[GestureManager] Objek planet disentuh:', intersects[0].object.name || 'mesh');
