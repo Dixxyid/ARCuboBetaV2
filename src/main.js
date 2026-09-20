@@ -98,6 +98,11 @@ class AppBootstrapper {
     this.visualGroup = null;
     this.currentCelestial = null;
 
+    // Guard anti-flickering: hanya satu target aktif pada satu waktu
+    // Mencegah bug moon/earth saling muncul saat scan
+    this._activeTargetName = null;
+    this._targetConfirmTimer = null; // debounce sebelum benar-benar load model
+
     // Timers
     this._markerLostTimer = null;
     this._rescanTimer     = null;
@@ -214,33 +219,67 @@ class AppBootstrapper {
   // ─── Toggle Lock / Unlock Coordinate (Tombol HUD) ───────────────────────────
 
   toggleCoordinateLock() {
-    if (!this.coordinateLock.isLocked) {
-      console.warn('[AstroAR] Belum ada kartu marker yang terdeteksi untuk dikunci.');
+    // ── Mode: SLAM_LOCKED → Buka kuncian, kembali ke Marker ──
+    if (this.coordinateLock.isSlamLocked) {
+      this.coordinateLock.unlockFromSlam(this.anchorGroup);
+      // Sembunyikan objek sampai marker terlihat lagi
+      if (this.anchorGroup) this.anchorGroup.visible = false;
+      this.arStateManager.setState(ARSTATES.MARKER_SCAN);
+      if (window.arUI) {
+        window.arUI.setSlamLocked(false);
+        window.arUI.setTrackingState(ARSTATES.MARKER_SCAN);
+        window.arUI.setCollectProgress?.(0);
+      }
+      console.log('[AstroAR] SLAM dibuka → Kembali ke mode Marker. Arahkan kamera ke kartu.');
       return;
     }
 
-    if (this.coordinateLock.isSlamLocked) {
-      // Buka kuncian SLAM: kembali ke mode marker dinamis
-      this.coordinateLock.unlockFromSlam(this.anchorGroup);
+    // ── Mode: Sedang collecting → Batalkan ──
+    if (this.coordinateLock.isCollecting) {
+      this.coordinateLock._isCollecting = false;
+      this.coordinateLock._onCollectionDone = null;
       this.arStateManager.setState(ARSTATES.MARKER_TRACKING);
       if (window.arUI) {
         window.arUI.setSlamLocked(false);
         window.arUI.setTrackingState(ARSTATES.MARKER_TRACKING);
+        window.arUI.setCollectProgress?.(0);
       }
-      console.log('[AstroAR] SLAM World Anchor dibuka → Kembali ke pelacakan dinamis kartu.');
-    } else {
-      // Kunci ke SLAM World Anchor: matriks dibekukan di koordinat fisik ruangan
-      this.coordinateLock.lockToSlam(this.anchorGroup);
+      console.log('[AstroAR] Pengumpulan data SLAM dibatalkan.');
+      return;
+    }
+
+    // ── Mode: MARKER_TRACKING → Mulai kumpulkan data pose SLAM ──
+    if (!this.coordinateLock.isTracking) {
+      console.warn('[AstroAR] Tidak bisa lock: marker belum terdeteksi. Arahkan kamera ke kartu.');
+      return;
+    }
+
+    // Mulai fase pengumpulan 30 frame pose data yang konkret & valid
+    const started = this.coordinateLock.startSlamCollection(() => {
+      // Dipanggil otomatis setelah 30 frame terkumpul — commit lock!
+      this.coordinateLock.commitSlamLock(this.anchorGroup);
       this.arStateManager.setState(ARSTATES.SLAM_LOCKED);
       if (window.arUI) {
         window.arUI.setSlamLocked(true);
         window.arUI.setTrackingState(ARSTATES.SLAM_LOCKED);
+        window.arUI.setCollectProgress?.(1.0);
       }
       console.log('[AstroAR] SLAM World Anchor terkunci kokoh di ruang fisik!');
+    });
+
+    if (started) {
+      this.arStateManager.setState(ARSTATES.SLAM_COLLECTING);
+      if (window.arUI) {
+        window.arUI.setSlamLocked(false);
+        window.arUI.setTrackingState(ARSTATES.SLAM_COLLECTING);
+        window.arUI.setCollectProgress?.(0);
+      }
+      console.log('[AstroAR] Mulai mengumpulkan data SLAM (30 frame)...');
     }
   }
 
   // ─── Image Target Found ──────────────────────────────────────────────────────
+
 
   async _onTargetFound(detail) {
     this._clearMarkerLostTimer();
@@ -251,6 +290,16 @@ class AppBootstrapper {
       console.warn('[AstroAR] Target tidak dikenali:', detail.name);
       return;
     }
+
+    // ── Anti-flickering guard ─────────────────────────────────────────────────
+    // Jika target yang masuk BERBEDA dari yang aktif, abaikan dulu selama 400ms
+    // Ini mencegah bug "scan bumi → muncul bulan" akibat race condition
+    if (this._activeTargetName && this._activeTargetName !== celestial.id) {
+      console.warn(`[AstroAR] Target "${celestial.id}" masuk saat "${this._activeTargetName}" aktif — diabaikan.`);
+      return;
+    }
+    // Set nama target aktif segera
+    this._activeTargetName = celestial.id;
 
     // Kunci pose awal
     this.coordinateLock.lock(detail);
@@ -265,7 +314,7 @@ class AppBootstrapper {
     }
 
     // Load model jika belum ada atau berbeda
-    if (this.currentCelestial?.name !== celestial.name || !this.anchorGroup) {
+    if (this.currentCelestial?.id !== celestial.id || !this.anchorGroup) {
       await this._loadModel(celestial, detail);
     }
   }
@@ -273,13 +322,24 @@ class AppBootstrapper {
   // ─── Image Target Updated ────────────────────────────────────────────────────
 
   _onTargetUpdated(detail) {
+    // Tolak update pose dari target yang berbeda dengan yang sedang aktif
+    // Ini mencegah bug di mana update bulan menggeser posisi bumi (race condition)
+    const celestial = resolveCelestial(detail.name);
+    if (!celestial || celestial.id !== this._activeTargetName) return;
+
     // Update target pose di CoordinateLock (jika dalam SLAM_LOCKED, otomatis diabaikan)
     this.coordinateLock.update(detail);
   }
 
   // ─── Image Target Lost ───────────────────────────────────────────────────────
 
-  _onTargetLost() {
+  _onTargetLost(detail) {
+    // Hanya proses kehilangan target jika memang target yang aktif yang hilang
+    if (detail && this._activeTargetName) {
+      const celestial = resolveCelestial(detail.name);
+      if (!celestial || celestial.id !== this._activeTargetName) return;
+    }
+
     this.coordinateLock.setTargetLost();
 
     // Jika dalam mode SLAM_LOCKED, objek tetap kokoh menancap di ruang fisik SLAM!
@@ -347,6 +407,14 @@ class AppBootstrapper {
       const model = await this.modelLoader.loadModel(modelPath);
       this.modelLoader.normalizeScale(model, celestialInfo.displaySize ?? 0.15);
 
+      // ── Koreksi Orientasi Model (Fix Rotasi Terbalik) ──
+      // GLB planet sering memiliki sumbu Y ke atas yang berbeda dari konvensi 8th Wall.
+      // defaultRotation di celestialData mendefinisikan rotasi koreksi awal.
+      if (celestialInfo.defaultRotation) {
+        const [rx, ry, rz] = celestialInfo.defaultRotation;
+        model.rotation.set(rx, ry, rz);
+      }
+
       model.traverse((child) => {
         if (child.isMesh && child.material) {
           child.material.side        = THREE.DoubleSide;
@@ -360,6 +428,7 @@ class AppBootstrapper {
       this.anchorGroup.name = 'AnchorGroup';
 
       // Tier 2: visualGroup (mengatur rotasi sentuhan & zoom skala pengguna)
+      // visualGroup TIDAK mendapatkan defaultRotation — itu sudah diterapkan ke model langsung
       this.visualGroup = new THREE.Group();
       this.visualGroup.name = 'VisualGroup';
       this.visualGroup.add(model);
@@ -379,7 +448,7 @@ class AppBootstrapper {
         window.arUI.setLoadingModel(false);
       }
 
-      console.log(`[AstroAR] Model "${celestialInfo.name}" dimuat dengan Two-Tier Hierarchy.`);
+      console.log(`[AstroAR] Model "${celestialInfo.name}" dimuat. Orientasi koreksi: ${celestialInfo.defaultRotation ?? 'default'}.`);
     } catch (err) {
       console.error('[AstroAR] Gagal memuat model:', err);
       if (window.arUI) {
@@ -395,14 +464,22 @@ class AppBootstrapper {
       // 1. Update pose anchor fisik di ruang dunia
       this.coordinateLock.applyTo(this.anchorGroup, dt);
 
-      // 2. Update gestur sentuh (rotasi inersia damping & pinch scale)
+      // 2. Update progress bar pengumpulan data SLAM di UI
+      if (this.coordinateLock.isCollecting && window.arUI) {
+        window.arUI.setCollectProgress(this.coordinateLock.collectProgress);
+      }
+
+      // 3. Update gestur sentuh (rotasi inersia damping & pinch scale)
       if (this.gestureManager) {
         this.gestureManager.update(dt);
       }
 
-      // 3. Rotasi kontinu planet pada porosnya saat pengguna tidak sedang memutar manual
+      // 4. Rotasi kontinu planet pada sumbu Y lokal (setelah koreksi orientasi)
+      // Rotasi hanya pada anak model langsung (bukan visualGroup) agar
+      // gestur orbit tetap independen dari rotasi otomatis planet
       if (this.visualGroup && !this.gestureManager?.isDragging) {
-        this.visualGroup.rotation.y += 0.25 * dt;
+        const planetModel = this.visualGroup.children[0];
+        if (planetModel) planetModel.rotation.y += 0.25 * dt;
       }
     }
   }
@@ -418,6 +495,8 @@ class AppBootstrapper {
       this.anchorGroup = null;
       this.visualGroup = null;
     }
+    // Bersihkan active target guard saat model di-dispose
+    this._activeTargetName = null;
   }
 
   _clearMarkerLostTimer() {

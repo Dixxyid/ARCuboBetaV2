@@ -14,6 +14,7 @@ export const celestialData = {
     surfaceTemp: "288 K (15 °C)",
     modelPath: "./models/solar_system/earth.glb",
     displaySize: 0.90, // Ukuran tampil di AR (unit relatif terhadap lebar marker)
+    defaultRotation: [Math.PI / 2, 0, 0], // Fix orientasi: rotasi 90 derajat di sumbu X
     description: "Planet ketiga dari Matahari yang merupakan satu-satunya benda astronomi yang diketahui menampung kehidupan. Memiliki atmosfer kaya oksigen dan samudra air cair.",
     doi: "10.1038/s41586-020-2094-0"
   },
@@ -27,6 +28,7 @@ export const celestialData = {
     surfaceTemp: "210 K (-63 °C)",
     modelPath: "./models/solar_system/mars.glb",
     displaySize: 0.90, // Mars dibuat sedikit lebih kecil dari Bumi sesuai proporsi visual
+    defaultRotation: [Math.PI / 2, 0, 0],
     description: "Planet keempat dari Matahari dengan permukaan gurun berbatu yang kaya akan besi(III) oksida, memberikannya warna kemerahan yang khas.",
     doi: "10.1126/science.1246417"
   },
@@ -40,6 +42,7 @@ export const celestialData = {
     surfaceTemp: "120 K s.d. 390 K (-153 °C s.d. 117 °C)",
     modelPath: "./models/solar_system/moon.glb",
     displaySize: 0.90,
+    defaultRotation: [Math.PI / 2, 0, 0],
     description: "Satelit alami satu-satunya Bumi dan satelit alami terbesar kelima di Tata Surya. Berperan penting dalam menstabilkan kemiringan sumbu Bumi dan menciptakan pasang surut laut.",
     doi: "10.1038/nature07842"
   }

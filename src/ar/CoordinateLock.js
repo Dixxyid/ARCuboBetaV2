@@ -17,6 +17,7 @@ export class CoordinateLock {
   constructor() {
     this._locked     = false;
     this._slamLocked = false;
+    this._isCollecting = false; // Fase pengumpulan pose sebelum SLAM lock
     this._isTracking = false;
     this._targetName = null;
     this._timestamp  = null;
@@ -35,18 +36,30 @@ export class CoordinateLock {
     this._candidatePosition   = new THREE.Vector3();
     this._candidateQuaternion = new THREE.Quaternion();
 
-    // ── Parameter Stabilisasi ──
-    this.DEADBAND_POS_METERS = 0.002;  // 2 milimeter
+    // ── Parameter Stabilisasi (Normal Tracking) ──
+    this.DEADBAND_POS_METERS = 0.002;  // 2 mm — filter gerak super kecil
     this.DEADBAND_ROT_RAD    = 0.0087; // ~0.5 derajat
-    this.MAX_POS_JUMP_METERS = 0.30;   // 30 cm
+    this.MAX_POS_JUMP_METERS = 0.30;   // 30 cm — batas jump outlier
     this.OUTLIER_CONFIRMATION_FRAMES = 4;
     this._outlierCount = 0;
-    this.SMOOTH_LAMBDA = 14.0;
+    this.SMOOTH_LAMBDA = 14.0;         // Koefisien EMA LERP (~14 = responsif & halus)
     this.MAX_DRIFT_METERS = 15.0;
 
-    // ── Rolling Pose History Buffer untuk Keyframe Pose Averaging ──
-    this.MAX_HISTORY = 8;
+    // ── Parameter Stabilisasi (Mode Collecting — lebih ketat) ──
+    // Saat mengumpulkan data SLAM, deadband diperketat agar hanya sampel
+    // berkualitas tinggi yang masuk ke buffer pose averaging.
+    this.COLLECT_DEADBAND_POS = 0.001; // 1 mm (lebih ketat dari normal)
+    this.COLLECT_DEADBAND_ROT = 0.003; // ~0.17 derajat (lebih ketat)
+    this.COLLECT_MAX_JUMP     = 0.10;  // 10 cm — tolak outlier lebih agresif
+
+    // ── Rolling Pose History Buffer ──
+    // MAX_HISTORY = 60: menyimpan 1 detik data di 60 FPS.
+    // SLAM_COLLECT_TARGET = 60: wajib 60 sampel valid sebelum commit lock.
+    this.MAX_HISTORY           = 60;
+    this.SLAM_COLLECT_TARGET   = 60;
     this._poseHistory = [];
+    this._collectFrameCount = 0;
+    this._onCollectionDone = null;
   }
 
   /**
@@ -77,7 +90,10 @@ export class CoordinateLock {
     this._locked     = true;
     this._isTracking = true;
     this._outlierCount = 0;
-    this._poseHistory  = [];
+    // Jangan reset poseHistory jika sedang collecting — biarkan terus akumulasi
+    if (!this._isCollecting) {
+      this._poseHistory  = [];
+    }
 
     this._recordPose(this._currentPosition, this._currentQuaternion);
 
@@ -134,17 +150,48 @@ export class CoordinateLock {
       this._targetScale.copy(parsed);
     }
 
-    // Simpan ke riwayat pose untuk Keyframe Pose Averaging
-    this._recordPose(this._targetPosition, this._targetQuaternion);
+    // Simpan ke riwayat pose
+    this._recordPose(this._targetPosition, this._targetQuaternion, this._isCollecting);
+
+    // Jika sedang dalam fase pengumpulan SLAM, hitung kemajuan
+    if (this._isCollecting) {
+      this._collectFrameCount++;
+
+      // Log hanya di milestone (0%, 25%, 50%, 75%, 100%) — tidak spam console
+      const pct = Math.floor((this._collectFrameCount / this.SLAM_COLLECT_TARGET) * 100);
+      if (pct % 25 === 0 || this._collectFrameCount === 1) {
+        console.log(`[CoordinateLock] SLAM Collecting: ${this._collectFrameCount}/${this.SLAM_COLLECT_TARGET} (${pct}%)`);
+      }
+
+      if (this._collectFrameCount >= this.SLAM_COLLECT_TARGET) {
+        this._isCollecting = false;
+        console.log('[CoordinateLock] ✓ Data SLAM cukup! Commit lock...');
+        if (this._onCollectionDone) {
+          this._onCollectionDone();
+          this._onCollectionDone = null;
+        }
+      }
+    }
   }
 
   /**
-   * Catat pose ke dalam circular buffer history
+   * Catat pose ke dalam circular buffer history.
+   * Saat mode collecting, filter lebih ketat dan setiap sampel diberi bobot waktu.
+   * @param {THREE.Vector3} pos
+   * @param {THREE.Quaternion} quat
+   * @param {boolean} isCollectingSample - true jika dipanggil dari fase collecting
    */
-  _recordPose(pos, quat) {
+  _recordPose(pos, quat, isCollectingSample = false) {
+    // Bobot: sampel terbaru lebih dipercaya (exponential weight)
+    // Frame ke-N dari total M: weight = e^(N/M) yang dinormalisasi
+    const weight = isCollectingSample
+      ? Math.exp(this._collectFrameCount / this.SLAM_COLLECT_TARGET)
+      : 1.0;
+
     this._poseHistory.push({
-      position: pos.clone(),
+      position:   pos.clone(),
       quaternion: quat.clone(),
+      weight,
     });
     if (this._poseHistory.length > this.MAX_HISTORY) {
       this._poseHistory.shift();
@@ -152,44 +199,100 @@ export class CoordinateLock {
   }
 
   /**
-   * Kunci Koordinat ke SLAM World Space secara permanen (Solid World Anchor).
-   * Menghitung consensus pose dan membekukan matrixAutoUpdate.
-   * @param {THREE.Object3D} anchorGroup - Parent group Three.js
+   * Mulai fase pengumpulan data pose untuk SLAM anchor.
+   * Dipanggil saat tombol "Lock Coordinate" ditekan.
+   * Akan mengakumulasi MAX_HISTORY frame, lalu memanggil onDone().
+   * @param {Function} onDone - callback dipanggil otomatis setelah data cukup
    */
-  lockToSlam(anchorGroup) {
+  startSlamCollection(onDone) {
+    if (!this._locked || !this._isTracking) {
+      console.warn('[CoordinateLock] Tidak bisa mulai collecting — marker belum terdeteksi.');
+      return false;
+    }
+    if (this._slamLocked) {
+      console.warn('[CoordinateLock] Sudah dalam mode SLAM_LOCKED.');
+      return false;
+    }
+    // Reset buffer dan mulai akumulasi fresh
+    this._poseHistory      = [];
+    this._collectFrameCount = 0;
+    this._isCollecting     = true;
+    this._onCollectionDone = onDone;
+    console.log(`[CoordinateLock] Mulai kumpulkan ${this.SLAM_COLLECT_TARGET} frame data pose SLAM...`);
+    return true;
+  }
+
+  /**
+   * Hitung consensus pose dari buffer dan bekukan matriks Three.js.
+   * Menggunakan:
+   *   1. Variance-based Outlier Pruning — buang sampel yang menyimpang > 1 std dev
+   *   2. Weighted Markley Quaternion Averaging — frame terbaru diberi bobot lebih tinggi
+   *   3. matrixAutoUpdate = false — matriks dibekukan permanen
+   * @param {THREE.Object3D} anchorGroup
+   */
+  commitSlamLock(anchorGroup) {
     if (!this._locked) return;
 
-    // 1. Hitung Keyframe Pose Average jika ada riwayat pose
-    if (this._poseHistory.length > 0) {
-      const avgPos = new THREE.Vector3(0, 0, 0);
-      const baseQuat = this._poseHistory[0].quaternion;
-      let qx = 0, qy = 0, qz = 0, qw = 0;
+    const n = this._poseHistory.length;
+    if (n > 0) {
 
+      // ── Langkah 1: Hitung mean posisi awal (untuk variance) ──
+      const rawMean = new THREE.Vector3();
+      for (const p of this._poseHistory) rawMean.add(p.position);
+      rawMean.divideScalar(n);
+
+      // ── Langkah 2: Hitung standar deviasi posisi ──
+      let variance = 0;
       for (const p of this._poseHistory) {
-        avgPos.add(p.position);
+        variance += p.position.distanceToSquared(rawMean);
+      }
+      const stdDev = Math.sqrt(variance / n);
 
-        // Markley Quaternion Averaging dengan penanganan antipodal
-        const dot = p.quaternion.dot(baseQuat);
+      // ── Langkah 3: Prune outlier — buang sampel yang jauh > 1.5 std dev ──
+      const threshold = stdDev * 1.5;
+      const clean = this._poseHistory.filter(p =>
+        p.position.distanceTo(rawMean) <= threshold
+      );
+      const samples = clean.length > 0 ? clean : this._poseHistory; // fallback
+      console.log(`[CoordinateLock] Variance pruning: ${n} → ${samples.length} sampel bersih (stdDev=${stdDev.toFixed(4)}m)`);
+
+      // ── Langkah 4: Weighted Average Posisi & Rotasi ──
+      const avgPos  = new THREE.Vector3();
+      let totalW = 0;
+      let qx = 0, qy = 0, qz = 0, qw = 0;
+      const baseQuat = samples[0].quaternion;
+
+      for (const p of samples) {
+        const w = p.weight ?? 1.0;
+        totalW += w;
+        avgPos.addScaledVector(p.position, w);
+
+        // Markley Quaternion Averaging (dengan antipodal flip + weight)
+        const dot  = p.quaternion.dot(baseQuat);
         const sign = dot >= 0 ? 1 : -1;
-        qx += p.quaternion.x * sign;
-        qy += p.quaternion.y * sign;
-        qz += p.quaternion.z * sign;
-        qw += p.quaternion.w * sign;
+        qx += p.quaternion.x * sign * w;
+        qy += p.quaternion.y * sign * w;
+        qz += p.quaternion.z * sign * w;
+        qw += p.quaternion.w * sign * w;
       }
 
-      avgPos.divideScalar(this._poseHistory.length);
+      avgPos.divideScalar(totalW);
       const avgQuat = new THREE.Quaternion(qx, qy, qz, qw).normalize();
 
       this._targetPosition.copy(avgPos);
       this._currentPosition.copy(avgPos);
       this._targetQuaternion.copy(avgQuat);
       this._currentQuaternion.copy(avgQuat);
+
+      console.log(`[CoordinateLock] ✓ Consensus pose dari ${samples.length} sampel (weighted). Posisi:`, avgPos);
     }
 
-    this._slamLocked = true;
+    this._slamLocked   = true;
+    this._isCollecting = false;
 
-    // 2. Terapkan langsung dan BEKUKAN matriks Three.js agar tidak pernah bergeser
+    // ── Bekukan matriks Three.js — objek tidak akan bergeser selamanya ──
     if (anchorGroup) {
+      anchorGroup.visible = true;
       anchorGroup.position.copy(this._currentPosition);
       anchorGroup.quaternion.copy(this._currentQuaternion);
       anchorGroup.scale.copy(this._currentScale);
@@ -198,7 +301,15 @@ export class CoordinateLock {
       anchorGroup.matrixAutoUpdate = false; // Matriks terkunci kaku!
     }
 
-    console.log('[CoordinateLock] SLAM Solid World Anchor diaktifkan. Matriks dibekukan di:', this._currentPosition);
+    console.log('[CoordinateLock] SLAM Solid World Anchor ✓ LOCKED di:', this._currentPosition);
+  }
+
+  /**
+   * @deprecated Gunakan startSlamCollection() + commitSlamLock()
+   * Tetap tersedia untuk kompatibilitas
+   */
+  lockToSlam(anchorGroup) {
+    this.commitSlamLock(anchorGroup);
   }
 
   /**
@@ -237,6 +348,13 @@ export class CoordinateLock {
     // Jika sedang dalam SLAM_LOCKED, matriks sudah dibekukan kaku, tidak perlu diubah
     if (this._slamLocked) return;
 
+    // Jika marker tidak terlihat DAN bukan dalam mode collecting/slam — sembunyikan objek
+    if (!this._isTracking && !this._isCollecting) {
+      anchorGroup.visible = false;
+      return;
+    }
+
+    anchorGroup.visible = true;
     const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
     const alpha  = 1.0 - Math.exp(-this.SMOOTH_LAMBDA * safeDt);
 
@@ -272,22 +390,27 @@ export class CoordinateLock {
     return new THREE.Vector3(1, 1, 1);
   }
 
-  get isLocked()     { return this._locked; }
-  get isSlamLocked() { return this._slamLocked; }
-  get isTracking()   { return this._isTracking; }
-  get position()     { return this._currentPosition.clone(); }
-  get quaternion()   { return this._currentQuaternion.clone(); }
-  get scale()        { return this._currentScale.clone(); }
-  get targetName()   { return this._targetName; }
+  get isLocked()       { return this._locked; }
+  get isSlamLocked()   { return this._slamLocked; }
+  get isCollecting()   { return this._isCollecting; }
+  get isTracking()     { return this._isTracking; }
+  get collectProgress(){ return this._isCollecting ? Math.min(this._collectFrameCount / this.SLAM_COLLECT_TARGET, 1.0) : 0; }
+  get position()       { return this._currentPosition.clone(); }
+  get quaternion()     { return this._currentQuaternion.clone(); }
+  get scale()          { return this._currentScale.clone(); }
+  get targetName()     { return this._targetName; }
 
   clear(anchorGroup = null) {
-    this._locked     = false;
-    this._slamLocked = false;
-    this._isTracking = false;
-    this._targetName = null;
-    this._timestamp  = null;
-    this._outlierCount = 0;
-    this._poseHistory  = [];
+    this._locked       = false;
+    this._slamLocked   = false;
+    this._isCollecting = false;
+    this._isTracking   = false;
+    this._targetName   = null;
+    this._timestamp    = null;
+    this._outlierCount      = 0;
+    this._collectFrameCount = 0;
+    this._onCollectionDone  = null;
+    this._poseHistory       = [];
     this._currentPosition.set(0, 0, 0);
     this._targetPosition.set(0, 0, 0);
     this._currentQuaternion.identity();
@@ -297,6 +420,7 @@ export class CoordinateLock {
 
     if (anchorGroup) {
       anchorGroup.matrixAutoUpdate = true;
+      anchorGroup.visible = true;
     }
     console.log('[CoordinateLock] Pose di-clear.');
   }
