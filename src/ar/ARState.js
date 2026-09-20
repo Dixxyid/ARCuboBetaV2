@@ -1,26 +1,32 @@
 /**
- * Finite State Machine (FSM) — AR State untuk 8th Wall + Image Targets
+ * Finite State Machine (FSM) — AR State untuk 8th Wall SLAM + Image Targets
  *
- * Alur:
- * WORLD_SCAN → MARKER_SCAN → COORDINATE_LOCKED
- *                                  ↓ (marker hilang sementara)
- *                             VALIDATING
- *                            ↙         ↘
- *                    WORLD_SCAN    WORLD_TRACKING
- *                  (data invalid)  (marker benar hilang)
+ * Alur Baru:
+ * SURFACE_SCAN (Scan 4 arah: kanan, kiri, depan, bawah)
+ *      ↓ (Data SLAM tercukupi)
+ * SURFACE_CONFIRM (Modal: "Data permukaan terkumpul! Klik OK")
+ *      ↓ (Klik OK)
+ * MARKER_SCAN (Mencari kartu flashcard)
+ *      ↓ (Kartu terdeteksi)
+ * MARKER_TRACKING (Objek mengikuti kartu dinamis; Tombol "Lock Coordinate")
+ *      ↓ (Klik "Lock Coordinate")
+ * SLAM_LOCKED (Matriks dibekukan di world space; Objek kokoh; Tombol "Unlock Coordinate")
+ *      ↓ (Klik "Unlock Coordinate")
+ * MARKER_TRACKING / MARKER_SCAN (Kembali ke mode marker)
  */
 
 export const ARSTATES = {
-  WORLD_SCAN:          'WORLD_SCAN',          // 8th Wall scan permukaan (SLAM warm-up)
-  MARKER_SCAN:         'MARKER_SCAN',          // Mencari image target (flashcard)
-  COORDINATE_LOCKED:   'COORDINATE_LOCKED',    // Marker ketemu, pose di-lock di world space
-  VALIDATING:          'VALIDATING',           // Marker hilang sementara, cek validitas data
-  WORLD_TRACKING:      'WORLD_TRACKING',       // Marker hilang total, 8th Wall world tracking aktif
+  SURFACE_SCAN:     'SURFACE_SCAN',     // 8th Wall SLAM mapping 4 arah
+  SURFACE_CONFIRM:  'SURFACE_CONFIRM',  // Menunggu konfirmasi OK data terkumpul
+  MARKER_SCAN:      'MARKER_SCAN',      // Mencari image target (flashcard)
+  MARKER_TRACKING:  'MARKER_TRACKING',  // Objek aktif mengikuti kartu fisik
+  SLAM_LOCKED:      'SLAM_LOCKED',      // Objek terkunci permanen di SLAM world space
+  VALIDATING:       'VALIDATING',       // Transisi / validasi saat tracking goyang
 };
 
 export class ARStateManager {
   constructor(onChangeCallback = null) {
-    this.currentState = ARSTATES.WORLD_SCAN;
+    this.currentState = ARSTATES.SURFACE_SCAN;
     this.onChangeCallback = onChangeCallback;
   }
 

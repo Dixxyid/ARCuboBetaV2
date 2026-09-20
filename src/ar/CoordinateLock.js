@@ -1,61 +1,57 @@
 import * as THREE from 'three';
 
 /**
- * CoordinateLock & Spatial Stabilizer
- * 
- * Mengelola penguncian pose (posisi, rotasi, skala) di sistem koordinat SLAM 8th Wall.
- * Dilengkapi algoritma stabilisasi multi-tahap:
- * 1. Deadband Filter: Menghilangkan micro-jitter saat kamera/kartu diam.
- * 2. Outlier / Spike Rejection: Mencegah objek melompat (jumping) akibat glitch optik sesaat.
- * 3. Frame-Rate Independent Exponential Moving Average (EMA) & Quaternion SLERP:
- *    Menghasilkan pergerakan halus (smooth 60+ FPS) tanpa rubber-banding atau lag.
- * 4. Persistent World Anchor:
- *    Saat kamera berpaling atau kartu hilang dari pandangan, pose terkunci di ruang 3D dunia
- *    sehingga objek tetap mengapung di posisi fisik kartu di ruangan Anda.
- * 5. Smooth Re-acquisition Blend:
- *    Ketika kamera kembali melihat kartu, posisi disesuaikan secara lembut tanpa pop/teleport.
+ * CoordinateLock & SLAM Spatial Stabilizer
+ *
+ * Mengelola transisi dua mode spasial:
+ * 1. Mode Marker Dynamic Tracking:
+ *    Mengikuti posisi kartu fisik secara dinamis dengan filter Deadband, Outlier Rejection,
+ *    dan EMA LERP & Quaternion SLERP yang mulus.
+ * 2. Mode SLAM Solid World Anchor:
+ *    Saat tombol "Lock Coordinate" ditekan, menghitung consensus pose dari buffer pose (Markley
+ *    Quaternion Averaging) dan membekukan matriks dunia (matrixAutoUpdate = false).
+ *    Objek secara matematis terkunci kokoh di sistem koordinat dunia SLAM 8th Wall, tidak akan
+ *    bergeser sedikit pun saat kamera diarahkan ke mana saja di ruangan.
  */
 export class CoordinateLock {
   constructor() {
-    this._locked = false;
+    this._locked     = false;
+    this._slamLocked = false;
     this._isTracking = false;
     this._targetName = null;
-    this._timestamp = null;
+    this._timestamp  = null;
 
-    // Pose target dari pembacaan sensor/vision (raw/target)
+    // Pose target dari pembacaan sensor/vision (raw/filtered)
     this._targetPosition   = new THREE.Vector3();
     this._targetQuaternion = new THREE.Quaternion();
     this._targetScale      = new THREE.Vector3(1, 1, 1);
 
-    // Pose saat ini yang terfilter dan diterapkan ke Three.js Object3D
+    // Pose saat ini yang terfilter dan diterapkan ke Three.js AnchorGroup
     this._currentPosition   = new THREE.Vector3();
     this._currentQuaternion = new THREE.Quaternion();
     this._currentScale      = new THREE.Vector3(1, 1, 1);
 
-    // Temporary vectors untuk komputasi tanpa alokasi memori (cegah GC spikes)
+    // Temporary vectors untuk komputasi tanpa GC spikes
     this._candidatePosition   = new THREE.Vector3();
     this._candidateQuaternion = new THREE.Quaternion();
 
-    // ── Parameter Algoritma Stabilisasi ──
-    // Deadband: Pergeseran di bawah ambang ini dianggap derau sensor & diabaikan
+    // ── Parameter Stabilisasi ──
     this.DEADBAND_POS_METERS = 0.002;  // 2 milimeter
     this.DEADBAND_ROT_RAD    = 0.0087; // ~0.5 derajat
-
-    // Outlier Threshold: Lonjakan posisi di atas ini dalam 1 frame dicurigai sebagai glitch
     this.MAX_POS_JUMP_METERS = 0.30;   // 30 cm
-    this.OUTLIER_CONFIRMATION_FRAMES = 4; // Butuh 4 frame konsisten sebelum menerima perubahan drastis
+    this.OUTLIER_CONFIRMATION_FRAMES = 4;
     this._outlierCount = 0;
-
-    // Kecepatan smoothing lambda (responsif namun sangat mulus)
-    this.SMOOTH_LAMBDA = 12.0;
-
-    // Jarak drift maksimum yang wajar dalam skala ruangan (15 meter)
+    this.SMOOTH_LAMBDA = 14.0;
     this.MAX_DRIFT_METERS = 15.0;
+
+    // ── Rolling Pose History Buffer untuk Keyframe Pose Averaging ──
+    this.MAX_HISTORY = 8;
+    this._poseHistory = [];
   }
 
   /**
-   * Lock pose saat image target pertama kali ditemukan
-   * @param {{ position, rotation, scale, name }} detail - dari event reality.imagefound
+   * Mengunci pose saat target pertama kali ditemukan
+   * @param {{ position, rotation, scale, name }} detail
    */
   lock(detail) {
     const { position, rotation, scale, name } = detail;
@@ -81,18 +77,25 @@ export class CoordinateLock {
     this._locked     = true;
     this._isTracking = true;
     this._outlierCount = 0;
+    this._poseHistory  = [];
 
-    console.log(`[CoordinateLock] Pose terkunci untuk "${name}" di`, this._currentPosition, 'scale:', this._currentScale);
+    this._recordPose(this._currentPosition, this._currentQuaternion);
+
+    console.log(`[CoordinateLock] Pose terkunci untuk "${name}" di`, this._currentPosition);
   }
 
   /**
-   * Update pose saat target masih terlihat (reality.imageupdated)
-   * Menyaring jitter dengan Deadband dan Outlier Rejection.
+   * Update pose saat target masih terlihat di kamera (reality.imageupdated).
+   * Hanya memproses jika TIDAK sedang dalam mode SLAM locked.
    * @param {{ position, rotation, scale }} detail
    */
   update(detail) {
     if (!this._locked) return;
     this._isTracking = true;
+
+    // Jika sedang dalam mode SLAM_LOCKED, abaikan update optik kartu sama sekali
+    // agar derau optik/sudut pandang kamera tidak menggeser anchor yang kokoh!
+    if (this._slamLocked) return;
 
     const { position, rotation, scale } = detail;
 
@@ -103,15 +106,12 @@ export class CoordinateLock {
 
       if (posDist >= this.DEADBAND_POS_METERS) {
         if (posDist > this.MAX_POS_JUMP_METERS) {
-          // Lonjakan besar dalam 1 frame — kemungkinan optical glitch
           this._outlierCount++;
           if (this._outlierCount >= this.OUTLIER_CONFIRMATION_FRAMES) {
-            // Pengguna memang memindahkan kartu secara cepat dan bertahan
             this._outlierCount = 0;
             this._targetPosition.copy(this._candidatePosition);
           }
         } else {
-          // Pergerakan wajar: reset counter outlier dan update target
           this._outlierCount = 0;
           this._targetPosition.copy(this._candidatePosition);
         }
@@ -128,85 +128,141 @@ export class CoordinateLock {
       }
     }
 
-    // 3. Filter Skala (stabilkan skala agar tidak bergetar)
+    // 3. Filter Skala
     if (scale) {
       const parsed = this._parseScale(scale);
       this._targetScale.copy(parsed);
     }
+
+    // Simpan ke riwayat pose untuk Keyframe Pose Averaging
+    this._recordPose(this._targetPosition, this._targetQuaternion);
   }
 
   /**
-   * Beritahu sistem bahwa marker tidak lagi terlihat di kamera (reality.imagelost).
-   * Pada titik ini, pose target DIBEKUKAN sebagai World Anchor yang stabil.
+   * Catat pose ke dalam circular buffer history
+   */
+  _recordPose(pos, quat) {
+    this._poseHistory.push({
+      position: pos.clone(),
+      quaternion: quat.clone(),
+    });
+    if (this._poseHistory.length > this.MAX_HISTORY) {
+      this._poseHistory.shift();
+    }
+  }
+
+  /**
+   * Kunci Koordinat ke SLAM World Space secara permanen (Solid World Anchor).
+   * Menghitung consensus pose dan membekukan matrixAutoUpdate.
+   * @param {THREE.Object3D} anchorGroup - Parent group Three.js
+   */
+  lockToSlam(anchorGroup) {
+    if (!this._locked) return;
+
+    // 1. Hitung Keyframe Pose Average jika ada riwayat pose
+    if (this._poseHistory.length > 0) {
+      const avgPos = new THREE.Vector3(0, 0, 0);
+      const baseQuat = this._poseHistory[0].quaternion;
+      let qx = 0, qy = 0, qz = 0, qw = 0;
+
+      for (const p of this._poseHistory) {
+        avgPos.add(p.position);
+
+        // Markley Quaternion Averaging dengan penanganan antipodal
+        const dot = p.quaternion.dot(baseQuat);
+        const sign = dot >= 0 ? 1 : -1;
+        qx += p.quaternion.x * sign;
+        qy += p.quaternion.y * sign;
+        qz += p.quaternion.z * sign;
+        qw += p.quaternion.w * sign;
+      }
+
+      avgPos.divideScalar(this._poseHistory.length);
+      const avgQuat = new THREE.Quaternion(qx, qy, qz, qw).normalize();
+
+      this._targetPosition.copy(avgPos);
+      this._currentPosition.copy(avgPos);
+      this._targetQuaternion.copy(avgQuat);
+      this._currentQuaternion.copy(avgQuat);
+    }
+
+    this._slamLocked = true;
+
+    // 2. Terapkan langsung dan BEKUKAN matriks Three.js agar tidak pernah bergeser
+    if (anchorGroup) {
+      anchorGroup.position.copy(this._currentPosition);
+      anchorGroup.quaternion.copy(this._currentQuaternion);
+      anchorGroup.scale.copy(this._currentScale);
+      anchorGroup.updateMatrix();
+      anchorGroup.updateMatrixWorld(true);
+      anchorGroup.matrixAutoUpdate = false; // Matriks terkunci kaku!
+    }
+
+    console.log('[CoordinateLock] SLAM Solid World Anchor diaktifkan. Matriks dibekukan di:', this._currentPosition);
+  }
+
+  /**
+   * Lepaskan kuncian SLAM dan kembali ke mode AR Marker
+   * @param {THREE.Object3D} anchorGroup
+   */
+  unlockFromSlam(anchorGroup) {
+    this._slamLocked = false;
+    if (anchorGroup) {
+      anchorGroup.matrixAutoUpdate = true; // Buka pembekuan matriks
+    }
+    console.log('[CoordinateLock] SLAM Solid World Anchor dilepas. Kembali ke mode Marker.');
+  }
+
+  /**
+   * Notifikasi marker lepas dari pandangan kamera (reality.imagelost)
    */
   setTargetLost() {
     this._isTracking = false;
     this._outlierCount = 0;
-    // Set target pose persis ke posisi stabil saat ini agar tidak ada sisa interpolasi melayang
-    this._targetPosition.copy(this._currentPosition);
-    this._targetQuaternion.copy(this._currentQuaternion);
-    console.log(`[CoordinateLock] Marker lepas dari pandangan. World Anchor dipertahankan di:`, this._currentPosition);
+    if (!this._slamLocked) {
+      this._targetPosition.copy(this._currentPosition);
+      this._targetQuaternion.copy(this._currentQuaternion);
+    }
+    console.log('[CoordinateLock] Target marker hilang dari pandangan.');
   }
 
   /**
-   * Terapkan pose yang terstabilisasi ke Object3D Three.js.
-   * Dijalankan pada loop render 60 FPS untuk interpolasi ultra-smooth.
-   * @param {THREE.Object3D} object3D 
-   * @param {number} dt - Delta time dalam detik (misal 0.016 untuk 60fps)
+   * Terapkan pose ke AnchorGroup di setiap frame render 60 FPS
+   * @param {THREE.Object3D} anchorGroup 
+   * @param {number} dt 
    */
-  applyTo(object3D, dt = 0.016) {
-    if (!this._locked || !object3D) return;
+  applyTo(anchorGroup, dt = 0.016) {
+    if (!this._locked || !anchorGroup) return;
 
-    // Pastikan dt berada dalam rentang wajar (1ms s.d. 100ms) untuk mencegah teleport saat tab berganti
+    // Jika sedang dalam SLAM_LOCKED, matriks sudah dibekukan kaku, tidak perlu diubah
+    if (this._slamLocked) return;
+
     const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
+    const alpha  = 1.0 - Math.exp(-this.SMOOTH_LAMBDA * safeDt);
 
-    // Hitung faktor smoothing independen terhadap frame rate (EMA)
-    // Formula: alpha = 1 - e^(-lambda * dt)
-    const alpha = 1.0 - Math.exp(-this.SMOOTH_LAMBDA * safeDt);
-
-    // Interpolasi posisi (LERP)
     this._currentPosition.lerp(this._targetPosition, alpha);
-
-    // Interpolasi rotasi (SLERP) untuk mencegah flipping atau gimbal lock
     this._currentQuaternion.slerp(this._targetQuaternion, alpha);
-
-    // Interpolasi skala
     this._currentScale.lerp(this._targetScale, alpha);
 
-    // Terapkan ke matriks Three.js object
-    object3D.position.copy(this._currentPosition);
-    object3D.quaternion.copy(this._currentQuaternion);
-    object3D.scale.copy(this._currentScale);
+    anchorGroup.position.copy(this._currentPosition);
+    anchorGroup.quaternion.copy(this._currentQuaternion);
+    anchorGroup.scale.copy(this._currentScale);
   }
 
-  /**
-   * Validasi apakah pose saat ini masih valid di dunia nyata
-   * @param {THREE.Vector3} currentCameraPosition
-   * @returns {boolean}
-   */
   isValid(currentCameraPosition) {
     if (!this._locked) return false;
+    if (!Number.isFinite(this._currentPosition.x)) return false;
 
-    // Cek apakah koordinat adalah angka terhingga
-    if (!Number.isFinite(this._currentPosition.x) ||
-        !Number.isFinite(this._currentPosition.y) ||
-        !Number.isFinite(this._currentPosition.z)) {
-      return false;
-    }
-
-    // Jika ada posisi kamera, verifikasi jarak dalam batas toleransi ruangan
     if (currentCameraPosition) {
       const dist = this._currentPosition.distanceTo(currentCameraPosition);
       if (dist > this.MAX_DRIFT_METERS) {
-        console.warn(`[CoordinateLock] Pose melampaui batas jarak wajar (${dist.toFixed(2)}m > ${this.MAX_DRIFT_METERS}m)`);
+        console.warn(`[CoordinateLock] Pose melebihi batas drift (${dist.toFixed(2)}m)`);
         return false;
       }
     }
-
     return true;
   }
 
-  /** Helper parsing scale dari payload 8th Wall */
   _parseScale(scale) {
     if (typeof scale === 'number' && Number.isFinite(scale) && scale > 0) {
       return new THREE.Vector3(scale, scale, scale);
@@ -216,25 +272,32 @@ export class CoordinateLock {
     return new THREE.Vector3(1, 1, 1);
   }
 
-  get isLocked()   { return this._locked; }
-  get isTracking() { return this._isTracking; }
-  get position()   { return this._currentPosition.clone(); }
-  get quaternion() { return this._currentQuaternion.clone(); }
-  get scale()      { return this._currentScale.clone(); }
-  get targetName() { return this._targetName; }
+  get isLocked()     { return this._locked; }
+  get isSlamLocked() { return this._slamLocked; }
+  get isTracking()   { return this._isTracking; }
+  get position()     { return this._currentPosition.clone(); }
+  get quaternion()   { return this._currentQuaternion.clone(); }
+  get scale()        { return this._currentScale.clone(); }
+  get targetName()   { return this._targetName; }
 
-  clear() {
+  clear(anchorGroup = null) {
     this._locked     = false;
+    this._slamLocked = false;
     this._isTracking = false;
     this._targetName = null;
     this._timestamp  = null;
     this._outlierCount = 0;
+    this._poseHistory  = [];
     this._currentPosition.set(0, 0, 0);
     this._targetPosition.set(0, 0, 0);
     this._currentQuaternion.identity();
     this._targetQuaternion.identity();
     this._currentScale.set(1, 1, 1);
     this._targetScale.set(1, 1, 1);
+
+    if (anchorGroup) {
+      anchorGroup.matrixAutoUpdate = true;
+    }
     console.log('[CoordinateLock] Pose di-clear.');
   }
 }

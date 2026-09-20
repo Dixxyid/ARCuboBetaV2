@@ -35,6 +35,7 @@ export class EighthWallManager {
     this._surfaceReady  = false;
     this._surfaceFrameCount = 0;
     this.SURFACE_READY_THRESHOLD = 30; // Minimal frame tracking stabil sebelum "surface ready"
+    this._scanSectors = { left: false, right: false, front: false, down: false };
   }
 
   // ─── Inisialisasi & Start ──────────────────────────────────────────────────
@@ -126,9 +127,9 @@ export class EighthWallManager {
           self.callbacks.onXRSceneReady({ renderer, scene, camera });
         }
 
-        // Mulai dengan state WORLD_SCAN
-        self.stateManager.setState(ARSTATES.WORLD_SCAN);
-        console.log('[8thWall] Pipeline siap. State: WORLD_SCAN');
+        // Mulai dengan state SURFACE_SCAN
+        self.stateManager.setState(ARSTATES.SURFACE_SCAN);
+        console.log('[8thWall] Pipeline siap. State: SURFACE_SCAN');
       },
 
       // ── Update per frame ──
@@ -136,16 +137,38 @@ export class EighthWallManager {
         const reality = processCpuResult?.reality;
         if (!reality) return;
 
-        // Deteksi kestabilan world tracking untuk WORLD_SCAN → MARKER_SCAN
-        if (self.stateManager.is(ARSTATES.WORLD_SCAN)) {
+        // Deteksi kestabilan world tracking dan sapuan 4 arah ruangan
+        if (self.stateManager.is(ARSTATES.SURFACE_SCAN)) {
           if (reality.trackingStatus === 'LIMITED' || reality.trackingStatus === 'NORMAL') {
             self._surfaceFrameCount++;
 
-            if (self._surfaceFrameCount >= self.SURFACE_READY_THRESHOLD) {
+            // Evaluasi orientasi kamera untuk mendeteksi sapuan kanan, kiri, depan, bawah
+            if (self._xrThreeScene?.camera) {
+              const euler = new THREE.Euler().setFromQuaternion(self._xrThreeScene.camera.quaternion, 'YXZ');
+              const yawDeg   = THREE.MathUtils.radToDeg(euler.y);
+              const pitchDeg = THREE.MathUtils.radToDeg(euler.x);
+
+              if (yawDeg > 12)  self._scanSectors.right = true;
+              if (yawDeg < -12) self._scanSectors.left  = true;
+              if (Math.abs(yawDeg) <= 20 && pitchDeg > -25) self._scanSectors.front = true;
+              if (pitchDeg < -18) self._scanSectors.down = true;
+
+              if (self.callbacks.onScanProgress) {
+                self.callbacks.onScanProgress({ ...self._scanSectors });
+              }
+            }
+
+            const allCovered = self._scanSectors.left && self._scanSectors.right &&
+                               self._scanSectors.front && self._scanSectors.down;
+
+            // Jika ke-4 arah tercakup atau frame tracking stabil cukup banyak (fallback)
+            if ((allCovered && self._surfaceFrameCount >= 25) || self._surfaceFrameCount >= 70) {
               self._surfaceReady = true;
-              self.stateManager.setState(ARSTATES.MARKER_SCAN);
-              if (self.callbacks.onSurfaceReady) self.callbacks.onSurfaceReady();
-              console.log('[8thWall] Permukaan terdeteksi → MARKER_SCAN');
+              self.stateManager.setState(ARSTATES.SURFACE_CONFIRM);
+              if (self.callbacks.onSurfaceDataCollected) {
+                self.callbacks.onSurfaceDataCollected();
+              }
+              console.log('[8thWall] Data permukaan terkumpul (4 sektor) → SURFACE_CONFIRM');
             }
           } else {
             // Reset jika tracking hilang
@@ -225,12 +248,13 @@ export class EighthWallManager {
     return this._xrThreeScene || null;
   }
 
-  /** Force reset ke WORLD_SCAN (misal setelah scan ulang diminta) */
-  resetToWorldScan() {
+  /** Force reset ke SURFACE_SCAN */
+  resetToSurfaceScan() {
     this._surfaceReady = false;
     this._surfaceFrameCount = 0;
-    this.stateManager.setState(ARSTATES.WORLD_SCAN);
-    console.log('[8thWall] Reset ke WORLD_SCAN');
+    this._scanSectors = { left: false, right: false, front: false, down: false };
+    this.stateManager.setState(ARSTATES.SURFACE_SCAN);
+    console.log('[8thWall] Reset ke SURFACE_SCAN');
   }
 
   get isRunning()    { return this._isRunning; }

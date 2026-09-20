@@ -36,8 +36,8 @@
       <div class="status-badge" x-text="trackingStatusText"></div>
     </header>
 
-    <!-- Notif Scan Permukaan (State: WORLD_SCAN) -->
-    <template x-if="trackingState === 'WORLD_SCAN'">
+    <!-- Notif Scan Permukaan 4 Arah (State: SURFACE_SCAN) -->
+    <template x-if="trackingState === 'SURFACE_SCAN'">
       <div class="scanner-guide world-scan" x-transition.opacity.duration.300ms>
         <div class="scanner-box surface">
           <div class="corner top-left"></div>
@@ -46,8 +46,41 @@
           <div class="corner bottom-right"></div>
           <div class="scan-line"></div>
         </div>
-        <p class="guide-text">Gerakkan kamera untuk scan permukaan</p>
-        <p class="guide-subtext">8th Wall sedang memetakan dunia...</p>
+        <p class="guide-text">Arahkan kamera ke sekeliling ruangan</p>
+        <p class="guide-subtext">Gerakkan ke kiri, kanan, depan & permukaan bawah...</p>
+        <div class="direction-grid">
+          <span class="direction-tag" :class="{ 'active': scanProgress.left }">
+            <span class="check">✓</span> Kiri
+          </span>
+          <span class="direction-tag" :class="{ 'active': scanProgress.right }">
+            <span class="check">✓</span> Kanan
+          </span>
+          <span class="direction-tag" :class="{ 'active': scanProgress.front }">
+            <span class="check">✓</span> Depan
+          </span>
+          <span class="direction-tag" :class="{ 'active': scanProgress.down }">
+            <span class="check">✓</span> Bawah
+          </span>
+        </div>
+      </div>
+    </template>
+
+    <!-- Modal Dialog Konfirmasi: Data Permukaan Terkumpul -->
+    <template x-if="showSurfaceDoneModal">
+      <div class="surface-confirm-overlay" x-transition.opacity.duration.300ms>
+        <div class="surface-confirm-card glass-modal">
+          <div class="confirm-icon-wrap">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <h3 class="confirm-title">Data Permukaan Terkumpul!</h3>
+          <p class="confirm-desc">Ruangan berhasil dipetakan oleh SLAM. Siapkan kartu flashcard dan klik OK untuk mulai memindai objek.</p>
+          <button class="confirm-button-ok" @click="confirmSurfaceDone()">
+            OK, Mulai Scan Objek
+          </button>
+        </div>
       </div>
     </template>
 
@@ -74,14 +107,14 @@
       </div>
     </template>
 
-    <!-- Indikator Coordinate Locked -->
-    <template x-if="trackingState === 'COORDINATE_LOCKED'">
+    <!-- Indikator SLAM World Anchor Locked -->
+    <template x-if="trackingState === 'SLAM_LOCKED'">
       <div class="lock-indicator" x-transition.opacity.duration.300ms>
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
           <path d="M7 11V7a5 5 0 0110 0v4"></path>
         </svg>
-        <span>Coordinate Terkunci</span>
+        <span>SLAM World Anchor Terkunci</span>
       </div>
     </template>
 
@@ -104,6 +137,15 @@
       </div>
     </template>
 
+    <!-- Gesture Interaction Hint Pill -->
+    <template x-if="selectedCelestial && !showDetail && !showSurfaceDoneModal">
+      <div class="gesture-hint-pill">
+        <span>👆 Sentuh & geser untuk memutar</span>
+        <span>•</span>
+        <span>🤏 Cubit untuk zoom</span>
+      </div>
+    </template>
+
     <!-- Bottom Action Controls -->
     <footer class="hud-footer">
       <template x-if="selectedCelestial">
@@ -114,14 +156,15 @@
             </svg>
             <span>Data Astronomi</span>
           </button>
-          <!-- Tombol Lock Coordinate (ganti Reset Pandangan) -->
-          <button @click="lockCoordinate()" class="glass-button secondary"
-            :class="{ 'locked': trackingState === 'COORDINATE_LOCKED' }">
+          <!-- Tombol Dinamis Lock/Unlock Coordinate -->
+          <button @click="toggleCoordinateLock()" class="glass-button secondary"
+            :class="{ 'locked-slam': isSlamLocked }">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0110 0v4"></path>
+              <path x-show="isSlamLocked" d="M7 11V7a5 5 0 0110 0v4"></path>
+              <path x-show="!isSlamLocked" d="M7 11V7a5 5 0 019.9-1"></path>
             </svg>
-            <span x-text="trackingState === 'COORDINATE_LOCKED' ? 'Terkunci ✓' : 'Lock Coordinate'"></span>
+            <span x-text="isSlamLocked ? 'Unlock Coordinate' : 'Lock Coordinate'"></span>
           </button>
         </div>
       </template>

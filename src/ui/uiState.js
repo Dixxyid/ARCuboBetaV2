@@ -7,8 +7,17 @@ export function initUIStore() {
   const registerStore = () => {
     const storeObj = {
       // ── Tracking State ──────────────────────────────────────────────────────
-      trackingState:       'WORLD_SCAN',
-      trackingStatusText:  'Scan Permukaan...',
+      trackingState:       'SURFACE_SCAN',
+      trackingStatusText:  'Scan Permukaan (4 Arah)...',
+
+      // ── Scan 4-Arah Progress ────────────────────────────────────────────────
+      scanProgress: {
+        left:  false,
+        right: false,
+        front: false,
+        down:  false,
+      },
+      showSurfaceDoneModal: false,
 
       // ── Model / Content ─────────────────────────────────────────────────────
       selectedCelestial:   null,
@@ -17,36 +26,63 @@ export function initUIStore() {
       loadError:           null,
       _errorTimeout:       null,
 
-      // ── AR-specific UI flags ─────────────────────────────────────────────────
-      isCoordinateLocked:  false,
+      // ── AR SLAM & Marker UI Flags ───────────────────────────────────────────
+      isSlamLocked:        false,
       showRescanNotif:     false,
 
-      // ── State setters ────────────────────────────────────────────────────────
+      // ── State Setters ───────────────────────────────────────────────────────
 
       setTrackingState(state) {
         this.trackingState = state;
         const labels = {
-          WORLD_SCAN:        'Scan Permukaan...',
-          MARKER_SCAN:       'Cari Flashcard...',
-          COORDINATE_LOCKED: 'Coordinate Terkunci ✓',
-          VALIDATING:        'Memvalidasi Data...',
-          WORLD_TRACKING:    'World Tracking Aktif',
+          SURFACE_SCAN:     'Scan Permukaan (4 Arah)...',
+          SURFACE_CONFIRM:  'Permukaan Terpetakan ✓',
+          MARKER_SCAN:      'Arahkan ke Flashcard...',
+          MARKER_TRACKING:  'Marker Terdeteksi',
+          SLAM_LOCKED:      'SLAM World Anchor Terkunci ✓',
+          VALIDATING:       'Memvalidasi Data...',
         };
         this.trackingStatusText = labels[state] || state;
 
-        // Auto-clear notif saat state berubah ke bukan WORLD_SCAN
-        if (state !== 'WORLD_SCAN') this.showRescanNotif = false;
+        if (state === 'SURFACE_CONFIRM') {
+          this.showSurfaceDoneModal = true;
+        } else {
+          this.showSurfaceDoneModal = false;
+        }
+
+        if (state !== 'SURFACE_SCAN') {
+          this.showRescanNotif = false;
+        }
       },
 
-      setCoordinateLocked(locked) {
-        this.isCoordinateLocked = locked;
+      setScanProgress(progress) {
+        this.scanProgress = { ...this.scanProgress, ...progress };
+      },
+
+      setSlamLocked(locked) {
+        this.isSlamLocked = locked;
       },
 
       setShowRescanNotif(show) {
         this.showRescanNotif = show;
       },
 
-      // ── Model loading ─────────────────────────────────────────────────────────
+      // ── Konfirmasi Permukaan Selesai (Klik OK) ──────────────────────────────
+      confirmSurfaceDone() {
+        this.showSurfaceDoneModal = false;
+        if (window.arAppBootstrapper) {
+          window.arAppBootstrapper.confirmSurfaceDone();
+        }
+      },
+
+      // ── Toggle Lock/Unlock Coordinate (Tombol HUD Footer) ───────────────────
+      toggleCoordinateLock() {
+        if (window.arAppBootstrapper) {
+          window.arAppBootstrapper.toggleCoordinateLock();
+        }
+      },
+
+      // ── Model Loading ───────────────────────────────────────────────────────
 
       setLoadingModel(isLoading) {
         this.isLoadingModel = isLoading;
@@ -65,7 +101,7 @@ export function initUIStore() {
         this.loadError = null;
       },
 
-      // ── Content ───────────────────────────────────────────────────────────────
+      // ── Content ─────────────────────────────────────────────────────────────
 
       setSelectedCelestial(celestial) {
         this.selectedCelestial = celestial;
@@ -74,14 +110,6 @@ export function initUIStore() {
 
       toggleDetailModal() {
         this.showDetail = !this.showDetail;
-      },
-
-      // ── Lock Coordinate (dipanggil dari tombol HTML) ──────────────────────────
-
-      lockCoordinate() {
-        if (window.arAppBootstrapper) {
-          window.arAppBootstrapper.lockCoordinate();
-        }
       },
     };
 
