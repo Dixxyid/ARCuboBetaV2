@@ -52,8 +52,9 @@ VALIDATING (Validasi toleransi jarak kamera terhadap posisi objek)
 
 | Objek | File Target Gambar | Model 3D | Dimensi Target |
 |---|---|---|---|
-| **Bumi (Earth)** | `public/targets/raw_images/0_earth_card.png` | `public/models/solar_system/earth.glb` | 638 × 1016 px (Vertikal) |
-| **Mars** | `public/targets/raw_images/1_mars_card.png` | `public/models/solar_system/mars.glb` | 638 × 1016 px (Vertikal) |
+| **Bumi (Earth)** | `public/targets/raw_images/earth_card.png` | `public/models/solar_system/earth.glb` | 638 × 1016 px (Vertikal) |
+| **Mars** | `public/targets/raw_images/mars_card.png` | `public/models/solar_system/mars.glb` | 638 × 1016 px (Vertikal) |
+| **Bulan (Moon)** | `public/targets/raw_images/moon_card.png` | `public/models/solar_system/moon.glb` | 638 × 1016 px (Vertikal) |
 
 ---
 
@@ -64,9 +65,9 @@ ARCuboBetaV2/
 ├── 📂 public/                     # 🟡 ASET STATIS & BINER ENGINE
 │   ├── 📁 xr/                     # ⚙️ Biner lokal 8th Wall (xr.js, xr-slam.js, xr-tracking.js)
 │   ├── 📁 models/                 # 🪐 Objek 3D planet (.glb)
-│   │   └── 📁 solar_system/       # earth.glb, mars.glb
+│   │   └── 📁 solar_system/       # earth.glb, mars.glb, moon.glb
 │   ├── 📁 targets/                # 🎯 Gambar target flashcard
-│   │   └── 📂 raw_images/         # 0_earth_card.png, 1_mars_card.png
+│   │   └── 📂 raw_images/         # earth_card.png, mars_card.png, moon_card.png
 │   ├── 📁 materials/              # Aset tekstur & foto profil pengembang
 │   └── 📄 _headers                # Konfigurasi COOP/COEP/CORS untuk Netlify
 │

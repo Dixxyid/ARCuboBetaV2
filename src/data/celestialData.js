@@ -29,5 +29,18 @@ export const celestialData = {
     displaySize: 0.90, // Mars dibuat sedikit lebih kecil dari Bumi sesuai proporsi visual
     description: "Planet keempat dari Matahari dengan permukaan gurun berbatu yang kaya akan besi(III) oksida, memberikannya warna kemerahan yang khas.",
     doi: "10.1126/science.1246417"
+  },
+  moon: {
+    id: "moon",
+    name: "Bulan (Moon)",
+    category: "Satelit Alami",
+    mass: "7.342 × 10²² kg",
+    radius: "1,737.4 km",
+    semiMajorAxis: "0.00257 AU (384,400 km)",
+    surfaceTemp: "120 K s.d. 390 K (-153 °C s.d. 117 °C)",
+    modelPath: "./models/solar_system/moon.glb",
+    displaySize: 0.90,
+    description: "Satelit alami satu-satunya Bumi dan satelit alami terbesar kelima di Tata Surya. Berperan penting dalam menstabilkan kemiringan sumbu Bumi dan menciptakan pasang surut laut.",
+    doi: "10.1038/nature07842"
   }
 };

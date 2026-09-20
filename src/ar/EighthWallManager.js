@@ -203,8 +203,12 @@ export class EighthWallManager {
 
       // ── Render ──
       onRender: () => {
+        const now = performance.now();
+        const dt = self._lastRenderTime ? Math.min((now - self._lastRenderTime) / 1000, 0.1) : 0.016;
+        self._lastRenderTime = now;
+
         if (self.callbacks.onRender) {
-          self.callbacks.onRender();
+          self.callbacks.onRender(dt);
         }
         if (self._xrThreeScene) {
           const { renderer, scene, camera } = self._xrThreeScene;

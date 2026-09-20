@@ -18,7 +18,7 @@ const AR_IMAGE_TARGETS = [
   {
     name: 'earth',
     type: 'PLANAR',
-    imagePath: './targets/raw_images/0_earth_card.png',
+    imagePath: './targets/raw_images/earth_card.png',
     properties: {
       originalWidth: 638,
       originalHeight: 1016,
@@ -33,7 +33,22 @@ const AR_IMAGE_TARGETS = [
   {
     name: 'mars',
     type: 'PLANAR',
-    imagePath: './targets/raw_images/1_mars_card.png',
+    imagePath: './targets/raw_images/mars_card.png',
+    properties: {
+      originalWidth: 638,
+      originalHeight: 1016,
+      width: 638,
+      height: 1016,
+      top: 0,
+      left: 0,
+      isRotated: false,
+      physicalWidthInMeters: 0.1,
+    },
+  },
+  {
+    name: 'moon',
+    type: 'PLANAR',
+    imagePath: './targets/raw_images/moon_card.png',
     properties: {
       originalWidth: 638,
       originalHeight: 1016,
@@ -51,8 +66,9 @@ const AR_IMAGE_TARGETS = [
 function resolveCelestial(targetName) {
   if (!targetName) return null;
   const name = String(targetName).toLowerCase();
-  if (name.includes('earth')) return celestialData.earth;
-  if (name.includes('mars'))  return celestialData.mars;
+  if (name.includes('earth') || name.includes('bumi')) return celestialData.earth;
+  if (name.includes('mars')) return celestialData.mars;
+  if (name.includes('moon') || name.includes('bulan')) return celestialData.moon;
   return null;
 }
 
@@ -199,46 +215,42 @@ class AppBootstrapper {
     // Load model jika berbeda atau belum ada
     if (this.currentCelestial?.name !== celestial.name || !this.currentModelGroup) {
       await this._loadModel(celestial, detail);
-    } else {
-      // Posisikan ulang model yang sudah ada
-      this.coordinateLock.applyTo(this.currentModelGroup);
     }
   }
 
   // ─── Image Target Updated ────────────────────────────────────────────────────
 
   _onTargetUpdated(detail) {
-    // Update pose lock saat marker masih visible
+    // Update pose target di CoordinateLock (deadband & outlier filter menyaring jitter)
     this.coordinateLock.update(detail);
-
-    if (this.currentModelGroup) {
-      this.coordinateLock.applyTo(this.currentModelGroup);
-    }
   }
 
   // ─── Image Target Lost ───────────────────────────────────────────────────────
 
   _onTargetLost(detail) {
+    // Kunci pose saat ini sebagai World Anchor yang stabil
+    this.coordinateLock.setTargetLost();
+
     if (!this.arStateManager.is(ARSTATES.COORDINATE_LOCKED) &&
         !this.arStateManager.is(ARSTATES.WORLD_TRACKING)) return;
 
     this.arStateManager.setState(ARSTATES.VALIDATING);
     if (window.arUI) window.arUI.setCoordinateLocked(false);
 
-    // Beri jeda sebentar — mungkin marker hanya ter-oklusi sebentar
+    // Beri jeda sebentar — mungkin kartu hanya tertutup sesaat
     this._markerLostTimer = setTimeout(() => {
       this._handleMarkerFullyLost();
     }, MARKER_LOST_TIMEOUT_MS);
   }
 
   _handleMarkerFullyLost() {
-    // Validasi apakah pose masih masuk akal
-    if (this._camera && this.coordinateLock.isValid(this._camera.position)) {
-      // Pose valid → lanjut ke WORLD_TRACKING, model tetap mengambang
+    // Validasi apakah pose masih masuk akal di koordinat dunia SLAM
+    if (this.coordinateLock.isValid(this._camera?.position)) {
+      // Pose valid → lanjut ke WORLD_TRACKING, model tetap terkunci stabil di ruang dunia
       this.arStateManager.setState(ARSTATES.WORLD_TRACKING);
-      console.log('[AstroAR] Marker hilang → WORLD_TRACKING. Model mengambang di world space.');
+      console.log('[AstroAR] Marker hilang → WORLD_TRACKING. Model tetap terkunci di world space.');
     } else {
-      // Pose tidak valid → minta scan ulang
+      // Pose rusak / tracking SLAM gagal total → minta scan ulang
       this._requestRescan();
     }
   }
@@ -295,8 +307,8 @@ class AppBootstrapper {
       this.currentModelGroup.add(model);
       this._scene.add(this.currentModelGroup);
 
-      // Posisikan di world coordinate sesuai pose target
-      this.coordinateLock.applyTo(this.currentModelGroup);
+      // Posisikan di world coordinate sesuai pose target secara instan saat pertama kali dimuat
+      this.coordinateLock.applyTo(this.currentModelGroup, 1.0);
 
       this.currentCelestial = celestialInfo;
       if (window.arUI) {
@@ -328,10 +340,15 @@ class AppBootstrapper {
 
   // ─── Utilities ───────────────────────────────────────────────────────────────
 
-  _onRender() {
-    if (this.currentModelGroup && this.currentModelGroup.children.length > 0) {
-      // Rotasi pelan model planet pada porosnya (efek visual astronomi)
-      this.currentModelGroup.children[0].rotation.y += 0.005;
+  _onRender(dt = 0.016) {
+    if (this.currentModelGroup) {
+      // 1. Terapkan interpolasi koordinat stabil di setiap siklus render Three.js (60+ FPS)
+      this.coordinateLock.applyTo(this.currentModelGroup, dt);
+
+      // 2. Rotasi halus planet pada porosnya secara frame-rate independent
+      if (this.currentModelGroup.children.length > 0) {
+        this.currentModelGroup.children[0].rotation.y += 0.35 * dt;
+      }
     }
   }
 
