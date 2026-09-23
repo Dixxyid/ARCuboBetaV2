@@ -31,7 +31,7 @@
     <header class="hud-header glass-card">
       <div class="brand">
         <span class="dot-indicator" :class="trackingState.toLowerCase()"></span>
-        <h1 class="app-title">AstroAR5</h1>
+        <h1 class="app-title">AstroARV3</h1>
       </div>
       <div class="status-badge" x-text="trackingStatusText"></div>
     </header>
@@ -76,7 +76,8 @@
             </svg>
           </div>
           <h3 class="confirm-title">Data Permukaan Terkumpul!</h3>
-          <p class="confirm-desc">Ruangan berhasil dipetakan oleh SLAM. Siapkan kartu flashcard dan klik OK untuk mulai memindai objek.</p>
+          <p class="confirm-desc">Ruangan berhasil dipetakan oleh SLAM. Siapkan kartu flashcard dan klik OK untuk mulai
+            memindai objek.</p>
           <button class="confirm-button-ok" @click="confirmSurfaceDone()">
             OK, Mulai Scan Objek
           </button>
@@ -118,6 +119,18 @@
       </div>
     </template>
 
+    <!-- Badge Animasi Orbital Aktif (Muncul saat Bulan mengorbit Bumi) -->
+    <template x-if="hasOrbitalAnimation">
+      <div class="orbital-badge" x-transition.opacity.duration.500ms>
+        <span class="orbital-icon">🌕</span>
+        <div class="orbital-text">
+          <span class="orbital-title">Orbit Aktif</span>
+          <span class="orbital-desc">Bulan mengorbit Bumi</span>
+        </div>
+        <div class="orbital-pulse"></div>
+      </div>
+    </template>
+
     <!-- Loading Overlay -->
     <template x-if="isLoadingModel">
       <div class="loading-overlay" x-transition.opacity.duration.300ms>
@@ -138,7 +151,8 @@
     </template>
 
     <!-- Gesture Interaction Hint Pill -->
-    <template x-if="selectedCelestial && !showDetail && !showSurfaceDoneModal && (trackingState === 'MARKER_TRACKING' || trackingState === 'SLAM_LOCKED')">
+    <template
+      x-if="selectedCelestial && !showDetail && !showSurfaceDoneModal && (trackingState === 'MARKER_TRACKING' || trackingState === 'SLAM_LOCKED')">
       <div class="gesture-hint-pill">
         <span>👆 Sentuh & geser untuk memutar</span>
         <span>•</span>

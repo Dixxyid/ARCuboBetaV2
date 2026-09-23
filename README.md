@@ -1,11 +1,13 @@
-# 🌌 ARCuboBetaV2 (WebAR Spatial Flashcard)
+# 🌌 ARCuboBetaV3 (WebAR Spatial Flashcard)
 
-![Version](https://img.shields.io/badge/version-v2.0.0--beta-00f3ff?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-v3.0.0--beta-00f3ff?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-Active--Development-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-Academic-orange?style=for-the-badge)
 
 > **Platform Edukasi WebAR Astronomi Berbasis Kartu Fisik & Extended SLAM Tracking**  
 > Menggunakan **8th Wall Engine murni (SLAM World Tracking + Image Targets)** terintegrasi dengan **Three.js** dan **Alpine.js**.
+
+> 🤖 **Untuk AI Coding Assistant**: Baca [`AGENTS.md`](./AGENTS.md) terlebih dahulu sebelum membuat perubahan. Log implementasi ada di [`docs/IMPLEMENTATION_LOG.md`](./docs/IMPLEMENTATION_LOG.md).
 
 ---
 
@@ -24,10 +26,12 @@
 
 1. **Zero-Install WebAR**: Berjalan langsung di peramban web seluler (Chrome Android, Safari iOS) tanpa perlu mengunduh aplikasi tambahan dari Play Store / App Store.
 2. **Unified Spatial Coordinate System**: Pelacakan kartu fisik (*Image Targets*) dan pelacakan ruangan (*Visual SLAM*) berbagi satu sistem koordinat spasial 3D yang sama dari 8th Wall XR8.
-3. **Automatic Coordinate Lock**: Ketika kartu dikenali, posisi spasialnya otomatis terkunci di dunia nyata.
-4. **Seamless Markerless Handover**: Jika kartu tersembunyi atau hilang dari bidikan kamera, model planet 3D tetap mengambang di lokasi kartu sebelumnya di ruangan Anda (*World Tracking*).
-5. **Drift & Drift Recovery**: Sistem memvalidasi jarak pose terhadap kamera; jika terjadi pergeseran posisi abnormal, sistem memberikan notifikasi cerdas untuk memindai ulang permukaan.
-6. **Smooth Planet Self-Rotation**: Objek planet berputar halus pada porosnya secara kontinu untuk visualisasi astronomi yang dinamis.
+3. **Multi-Target Simultaneous Tracking**: Beberapa kartu planet dapat terdeteksi dan ditampilkan secara bersamaan dalam satu sesi AR.
+4. **Orbital Animation (Earth–Moon)**: Ketika kartu **Bumi** dan **Bulan** keduanya dikunci bersama via Lock Coordinate, Bulan akan berputar mengelilingi Bumi secara real-time di AR world space.
+5. **Automatic Coordinate Lock**: Ketika kartu dikenali, posisi spasialnya otomatis terkunci di dunia nyata.
+6. **Seamless Markerless Handover**: Jika kartu tersembunyi atau hilang dari bidikan kamera, model planet 3D tetap mengambang di lokasi kartu sebelumnya di ruangan Anda (*World Tracking*).
+7. **Drift & Drift Recovery**: Sistem memvalidasi jarak pose terhadap kamera; jika terjadi pergeseran posisi abnormal, sistem memberikan notifikasi cerdas untuk memindai ulang permukaan.
+8. **Smooth Planet Self-Rotation**: Objek planet berputar halus pada porosnya secara kontinu untuk visualisasi astronomi yang dinamis.
 7. **Futuristic Glassmorphism HUD**: Tampilan antarmuka transparan dengan animasi laser scanner, indikator status neon, modal data astronomi, dan tautan rujukan ilmiah (DOI resmi).
 
 ---

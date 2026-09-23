@@ -30,6 +30,10 @@ export function initUIStore() {
       isSlamLocked:        false,
       showRescanNotif:     false,
 
+      // ── Orbital Animation Flags ─────────────────────────────────────────────
+      hasOrbitalAnimation: false,   // true jika ada animasi orbital aktif
+      orbitalCount:        0,        // jumlah relasi orbital yang aktif
+
       // ── State Setters ───────────────────────────────────────────────────────
 
       setTrackingState(state, customText = null) {
@@ -66,6 +70,18 @@ export function initUIStore() {
 
       setShowRescanNotif(show) {
         this.showRescanNotif = show;
+      },
+
+      // ── Orbital Animation ──────────────────────────────────────────────
+
+      /**
+       * Aktifkan / nonaktifkan badge orbital di HUD.
+       * @param {boolean} active
+       * @param {number}  count - jumlah relasi orbital (opsional)
+       */
+      setOrbitalActive(active, count = 0) {
+        this.hasOrbitalAnimation = active;
+        this.orbitalCount        = active ? count : 0;
       },
 
       // ── Konfirmasi Permukaan Selesai (Klik OK) ──────────────────────────────

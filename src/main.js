@@ -13,6 +13,7 @@ import { GestureManager }        from './core/GestureManager.js';
 import { ARStateManager, ARSTATES } from './ar/ARState.js';
 import { EighthWallManager }     from './ar/EighthWallManager.js';
 import { CoordinateLock }        from './ar/CoordinateLock.js';
+import { OrbitalAnimator }       from './ar/OrbitalAnimator.js';
 
 // Konfigurasi Image Target 8th Wall dengan metadata geometri kartu
 const AR_IMAGE_TARGETS = [
@@ -111,6 +112,10 @@ class AppBootstrapper {
     this.targets = new Map();
     this.currentCelestial = null;
     this.isSlamLocked = false;
+
+    // ── Orbital Animator ──
+    // Mengelola animasi orbital planet-satelit (mis. Bulan mengorbit Bumi)
+    this.orbitalAnimator = new OrbitalAnimator();
 
     // Timers
     this._markerLostTimer = null;
@@ -337,7 +342,13 @@ class AppBootstrapper {
   toggleCoordinateLock() {
     // ── Mode: SLAM_LOCKED → Buka kuncian, kembali ke Marker ──
     if (this.isSlamLocked) {
+      // Hentikan semua animasi orbital terlebih dahulu
+      this.orbitalAnimator.clearAll();
+
       for (const t of this.targets.values()) {
+        // Re-freeze matrixAutoUpdate sebelum unlock agar planet tidak melayang
+        // (OrbitalAnimator mungkin sudah mengaktifkan kembali untuk satelit)
+        t.anchorGroup.matrixAutoUpdate = false;
         t.coordinateLock.unlockFromSlam(t.anchorGroup);
         t.anchorGroup.visible = false;
         t.isVisible = false;
@@ -348,8 +359,9 @@ class AppBootstrapper {
         window.arUI.setSlamLocked(false);
         window.arUI.setTrackingState(ARSTATES.MARKER_SCAN);
         window.arUI.setCollectProgress?.(0);
+        window.arUI.setOrbitalActive?.(false);
       }
-      console.log('[AstroAR] SLAM dibuka → Seluruh objek kembali ke mode Marker.');
+      console.log('[AstroAR] SLAM dibuka → Animasi orbital dihentikan. Kembali ke mode Marker.');
       return;
     }
 
@@ -404,6 +416,9 @@ class AppBootstrapper {
             window.arUI.setCollectProgress?.(1.0);
           }
           console.log(`[AstroAR] Multi-target SLAM World Anchor terkunci (${totalToCollect} objek)!`);
+
+          // ── Deteksi pasangan planet-satelit dan aktifkan animasi orbital ──
+          this._checkAndActivateOrbitals();
         }
       });
     });
@@ -562,36 +577,106 @@ class AppBootstrapper {
     console.log('[AstroAR] Meminta scan ulang permukaan ruangan...');
   }
 
+  // ─── Deteksi & Aktivasi Relasi Orbital ──────────────────────────────────────
+
+  /**
+   * Setelah semua target terkunci ke SLAM, cek apakah ada pasangan
+   * planet–satelit yang keduanya aktif. Jika ya, aktifkan animasi orbital.
+   *
+   * Data-driven: setiap celestial bisa mendefinisikan `orbitTarget` (string ID)
+   * untuk menyatakan bahwa benda ini adalah satelit dari target tersebut.
+   */
+  _checkAndActivateOrbitals() {
+    const lockedTargets = Array.from(this.targets.values()).filter(
+      t => t.coordinateLock.isSlamLocked
+    );
+
+    const lockedIds = new Set(lockedTargets.map(t => t.id));
+    let orbitalCount = 0;
+
+    for (const satelliteNode of lockedTargets) {
+      const { orbitTarget, orbitRadius, orbitSpeed, orbitTilt } = satelliteNode.celestial;
+
+      // Hanya proses jika celestial ini punya relasi orbital yang terdefinisi
+      if (!orbitTarget) continue;
+
+      // Planet induk harus juga ikut terkunci dalam sesi ini
+      if (!lockedIds.has(orbitTarget)) {
+        console.log(
+          `[AstroAR] Orbital "${satelliteNode.id}" → "${orbitTarget}" dilewati: ` +
+          `planet induk tidak aktif dalam sesi ini.`
+        );
+        continue;
+      }
+
+      const parentNode = this.targets.get(orbitTarget);
+      if (!parentNode) continue;
+
+      this.orbitalAnimator.addRelation(
+        satelliteNode.id,
+        satelliteNode,
+        parentNode,
+        { orbitRadius, orbitSpeed, orbitTilt }
+      );
+      orbitalCount++;
+    }
+
+    if (orbitalCount > 0) {
+      console.log(`[AstroAR] ${orbitalCount} animasi orbital diaktifkan!`);
+      if (window.arUI) {
+        window.arUI.setOrbitalActive?.(true, orbitalCount);
+      }
+    }
+  }
+
   // ─── Render Loop (Three.js 60 FPS) ──────────────────────────────────────────
 
   _onRender(dt = 0.016) {
     let maxProgress = 0;
     let anyCollecting = false;
 
+    // Set ID satelit yang sedang dalam mode orbital (skip auto-rotation sumbu Y)
+    const orbitalSatelliteIds = this.orbitalAnimator.hasActiveRelations
+      ? new Set(this.orbitalAnimator._relations.keys())
+      : null;
+
     for (const targetNode of this.targets.values()) {
       // 1. Terapkan pose adaptif dan eksekusi watchdog timeout masing-masing target
-      targetNode.coordinateLock.applyTo(targetNode.anchorGroup, dt);
+      //    Jika node sedang dalam mode orbital, applyTo tidak perlu dijalankan
+      //    (posisi dikendalikan penuh oleh OrbitalAnimator)
+      if (!orbitalSatelliteIds?.has(targetNode.id)) {
+        targetNode.coordinateLock.applyTo(targetNode.anchorGroup, dt);
+      }
 
       if (targetNode.coordinateLock.isCollecting) {
         anyCollecting = true;
         maxProgress = Math.max(maxProgress, targetNode.coordinateLock.collectProgress);
       }
 
-      // 2. Rotasi otomatis planet jika terlihat dan sedang tidak disentuh oleh drag pengguna
+      // 2. Rotasi otomatis pada sumbu planet (axial spin)
+      //    Satelit dalam orbital mode tetap berputar pada sumbunya (tidally locked = false, terlalu detail)
       if (targetNode.anchorGroup.visible && targetNode.planetModel) {
-        const isDraggingThis = (this.gestureManager?.isDragging && this.gestureManager.targetObject === targetNode.visualGroup);
+        const isDraggingThis = (
+          this.gestureManager?.isDragging &&
+          this.gestureManager.targetObject === targetNode.visualGroup
+        );
         if (!isDraggingThis) {
-          targetNode.planetModel.rotation.y += 0.25 * dt;
+          // Kecepatan rotasi aksial: satelit sedikit lebih lambat (simulasi tidally locked)
+          const spinSpeed = orbitalSatelliteIds?.has(targetNode.id) ? 0.12 : 0.25;
+          targetNode.planetModel.rotation.y += spinSpeed * dt;
         }
       }
     }
+
+    // 3. Update animasi orbital semua satelit aktif
+    this.orbitalAnimator.update(dt);
 
     // Update progress bar jika sedang collecting
     if (anyCollecting && window.arUI) {
       window.arUI.setCollectProgress(maxProgress);
     }
 
-    // 3. Update gestur sentuh (rotasi inersia damping & pinch scale)
+    // 4. Update gestur sentuh (rotasi inersia damping & pinch scale)
     if (this.gestureManager) {
       this.gestureManager.update(dt);
     }

@@ -44,7 +44,12 @@ export const celestialData = {
     displaySize: 0.90,
     defaultRotation: [Math.PI / 2, 0, 0],
     description: "Satelit alami satu-satunya Bumi dan satelit alami terbesar kelima di Tata Surya. Berperan penting dalam menstabilkan kemiringan sumbu Bumi dan menciptakan pasang surut laut.",
-    doi: "10.1038/nature07842"
+    doi: "10.1038/nature07842",
+    // ── Relasi Orbital: Bulan mengorbit Bumi ──
+    orbitTarget:  "earth",  // ID planet induk
+    orbitRadius:  0.45,     // Jarak orbit dalam meter (world space AR)
+    orbitSpeed:   0.6,      // Kecepatan angular (rad/s)
+    orbitTilt:    0.09,     // Inklinasi orbit terhadap sumbu Y (rad, ~5.1°)
   },
   sun: {
     id: "sun",
