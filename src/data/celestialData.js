@@ -12,7 +12,7 @@ export const celestialData = {
     radius: "6,371 km",
     semiMajorAxis: "1.000 AU (149.6 juta km)",
     surfaceTemp: "288 K (15 °C)",
-    modelPath: "./models/solar_system/earth.glb",
+    modelPath: "./models/solar_system/glb_earth/earth.glb",
     displaySize: 0.90, // Ukuran tampil di AR (unit relatif terhadap lebar marker)
     defaultRotation: [Math.PI / 2, 0, 0], // Fix orientasi: rotasi 90 derajat di sumbu X
     description: "Planet ketiga dari Matahari yang merupakan satu-satunya benda astronomi yang diketahui menampung kehidupan. Memiliki atmosfer kaya oksigen dan samudra air cair.",
@@ -26,7 +26,7 @@ export const celestialData = {
     radius: "3,389.5 km",
     semiMajorAxis: "1.524 AU (227.9 juta km)",
     surfaceTemp: "210 K (-63 °C)",
-    modelPath: "./models/solar_system/mars.glb",
+    modelPath: "./models/solar_system/glb_mars/mars.glb",
     displaySize: 0.90, // Mars dibuat sedikit lebih kecil dari Bumi sesuai proporsi visual
     defaultRotation: [Math.PI / 2, 0, 0],
     description: "Planet keempat dari Matahari dengan permukaan gurun berbatu yang kaya akan besi(III) oksida, memberikannya warna kemerahan yang khas.",
@@ -40,7 +40,7 @@ export const celestialData = {
     radius: "1,737.4 km",
     semiMajorAxis: "0.00257 AU (384,400 km)",
     surfaceTemp: "120 K s.d. 390 K (-153 °C s.d. 117 °C)",
-    modelPath: "./models/solar_system/moon.glb",
+    modelPath: "./models/solar_system/glb_moon/moon.glb",
     displaySize: 0.90,
     defaultRotation: [Math.PI / 2, 0, 0],
     description: "Satelit alami satu-satunya Bumi dan satelit alami terbesar kelima di Tata Surya. Berperan penting dalam menstabilkan kemiringan sumbu Bumi dan menciptakan pasang surut laut.",
@@ -59,7 +59,7 @@ export const celestialData = {
     radius: "696,340 km",
     semiMajorAxis: "Pusat Tata Surya (0 AU)",
     surfaceTemp: "5,778 K (5,505 °C)",
-    modelPath: "./models/solar_system/sun.glb",
+    modelPath: "./models/solar_system/glb_sun/sun.glb",
     displaySize: 0.95,
     defaultRotation: [Math.PI / 2, 0, 0],
     description: "Bintang deret utama di pusat Tata Surya yang menyumbang sekitar 99.86% dari massa total seluruh sistem. Menghasilkan energi radiasi raksasa melalui fusi hidrogen menjadi helium di intinya.",
