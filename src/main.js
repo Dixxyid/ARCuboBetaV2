@@ -394,14 +394,43 @@ const AR_IMAGE_TARGETS = [
   }
 ];
 
-// Helper pencocokan target name yang robust
+// Helper pencocokan target name yang robust — mendukung semua 25 target
 function resolveCelestial(targetName) {
   if (!targetName) return null;
-  const name = String(targetName).toLowerCase();
-  if (name.includes('earth') || name.includes('bumi')) return celestialData.earth;
-  if (name.includes('mars')) return celestialData.mars;
-  if (name.includes('moon') || name.includes('bulan')) return celestialData.moon;
-  if (name.includes('sun') || name.includes('matahari')) return celestialData.sun;
+  const raw = String(targetName).toLowerCase();
+
+  // 1. Direct lookup: nama target cocok persis dengan key di celestialData
+  //    (mis. "jupiter", "saturn", "55cancrie", dll.)
+  if (celestialData[raw]) return celestialData[raw];
+
+  // 2. Fallback: partial-match untuk alias bahasa Indonesia / variasi ejaan
+  if (raw.includes('earth') || raw.includes('bumi'))       return celestialData.earth;
+  if (raw.includes('moon') || raw.includes('bulan'))       return celestialData.moon;
+  if (raw.includes('sun') || raw.includes('matahari'))     return celestialData.sun;
+  if (raw.includes('mars'))                                return celestialData.mars;
+  if (raw.includes('merkurius') || raw.includes('mercury'))return celestialData.merkurius;
+  if (raw.includes('venus'))                               return celestialData.venus;
+  if (raw.includes('jupiter'))                             return celestialData.jupiter;
+  if (raw.includes('saturnus') || raw.includes('saturn'))  return celestialData.saturnus;
+  if (raw.includes('uranus'))                              return celestialData.uranus;
+  if (raw.includes('neptunus') || raw.includes('neptune')) return celestialData.neptunus;
+  if (raw.includes('phobos'))                              return celestialData.phobos;
+  if (raw.includes('europa'))                              return celestialData.europa;
+  if (raw.includes('titan'))                               return celestialData.titan;
+  if (raw.includes('enceladus'))                           return celestialData.enceladus;
+  if (raw.includes('triton'))                              return celestialData.triton;
+  if (raw.includes('oberon'))                              return celestialData.oberon;
+  if (raw.includes('pluto'))                               return celestialData.pluto;
+  if (raw.includes('ceres'))                               return celestialData.ceres;
+  if (raw.includes('eris'))                                return celestialData.eris;
+  if (raw.includes('haumea'))                              return celestialData.haumea;
+  if (raw.includes('makemake'))                            return celestialData.makemake;
+  if (raw.includes('55cancrie') || raw.includes('cancri')) return celestialData['55cancrie'];
+  if (raw.includes('asteroid'))                            return celestialData.asteroid;
+  if (raw.includes('comet') || raw.includes('komet'))      return celestialData.comet;
+  if (raw.includes('bimasakti') || raw.includes('milky'))  return celestialData.bimasakti;
+
+  console.warn('[AstroAR] Target tidak dikenali di resolveCelestial:', targetName);
   return null;
 }
 
