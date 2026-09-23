@@ -44,6 +44,9 @@ export class OrbitalAnimator {
     // (setelah commitSlamLock, matrixAutoUpdate di-set false)
     const satAnchor = satelliteNode.anchorGroup;
     satAnchor.matrixAutoUpdate = true;
+    
+    // Perkecil ukuran satelit menjadi 70% saat mode orbital aktif
+    satAnchor.scale.setScalar(0.7);
 
     this._relations.set(satelliteId, {
       satelliteNode,
@@ -66,6 +69,13 @@ export class OrbitalAnimator {
    */
   removeRelation(satelliteId) {
     if (this._relations.has(satelliteId)) {
+      const entry = this._relations.get(satelliteId);
+      
+      // Kembalikan skala satelit ke ukuran normal 100%
+      if (entry.satelliteNode.anchorGroup) {
+        entry.satelliteNode.anchorGroup.scale.setScalar(1.0);
+      }
+      
       this._relations.delete(satelliteId);
       console.log(`[OrbitalAnimator] Relasi orbital dihapus: "${satelliteId}"`);
     }
@@ -73,6 +83,12 @@ export class OrbitalAnimator {
 
   /** Hapus semua relasi orbital aktif (dipanggil saat Unlock Coordinate). */
   clearAll() {
+    for (const [id, entry] of this._relations.entries()) {
+      if (entry.satelliteNode.anchorGroup) {
+        entry.satelliteNode.anchorGroup.scale.setScalar(1.0);
+      }
+    }
+    
     const ids = [...this._relations.keys()];
     this._relations.clear();
     if (ids.length > 0) {

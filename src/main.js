@@ -661,8 +661,8 @@ class AppBootstrapper {
           this.gestureManager.targetObject === targetNode.visualGroup
         );
         if (!isDraggingThis) {
-          // Kecepatan rotasi aksial: satelit sedikit lebih lambat (simulasi tidally locked)
-          const spinSpeed = orbitalSatelliteIds?.has(targetNode.id) ? 0.12 : 0.25;
+          // Kecepatan rotasi aksial: diperlambat agar lebih rileks dan elegan
+          const spinSpeed = orbitalSatelliteIds?.has(targetNode.id) ? 0.05 : 0.15;
           targetNode.planetModel.rotation.y += spinSpeed * dt;
         }
       }
