@@ -154,15 +154,14 @@ export class ModelLoader {
     model.scale.setScalar(scaleFactor);
 
     // 5. Pusatkan model (reusable box setelah scale)
+    model.updateMatrixWorld(true);
     this._box.setFromObject(model);
     this._box.getCenter(this._center);
+    
+    // Geser agar titik tengah model tepat di origin (0,0,0)
     model.position.x -= this._center.x;
     model.position.y -= this._center.y;
-
-    // Angkat model sedikit di atas permukaan kartu (+Z)
-    const depthSize = this._box.max.z - this._box.min.z;
-    model.position.z -= this._box.min.z;
-    model.position.z += depthSize * 0.15;
+    model.position.z -= this._center.z;
 
     return model;
   }

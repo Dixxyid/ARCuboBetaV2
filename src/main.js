@@ -676,8 +676,17 @@ class AppBootstrapper {
           }
         });
 
-        targetNode.visualGroup.add(model);
-        targetNode.planetModel = model;
+        // Buat spinGroup untuk rotasi aksial yang sempurna dan
+        // angkat sedikit agar objek melayang persis di atas permukaan kartu
+        const spinGroup = new THREE.Group();
+        const displaySize = celestial.displaySize ?? 0.15;
+        // Posisi Y = radius (setengah displaySize) + margin tipis 2cm
+        spinGroup.position.y = (displaySize / 2) + 0.02; 
+        
+        spinGroup.add(model);
+        targetNode.visualGroup.add(spinGroup);
+        targetNode.planetModel = spinGroup; // Render loop akan merotasi spinGroup
+        
         targetNode.modelReady = true; // Flag: model sudah siap tampil
         console.log(`[AstroAR] ✓ Model "${celestial.name}" siap.`);
       } catch (err) {
