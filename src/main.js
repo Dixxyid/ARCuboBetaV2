@@ -1085,12 +1085,31 @@ class AppBootstrapper {
         maxProgress = Math.max(maxProgress, lock.collectProgress);
       }
 
-      // 3. Axial spin — hanya jika model visible dan ada model yang dimuat
+      // 3. Axial spin — aturan per tipe objek:
+      //    • Planet / bintang / eksoplanet : selalu berputar (PLANET_SPIN_SPEED)
+      //    • Satelit (punya orbitTarget)   : DIAM saat idle, berputar pelan saat orbital aktif
+      //    • Bimasakti                     : tidak berputar sama sekali
       if (anchor.visible && targetNode.planetModel) {
         const isDraggingThis = isDraggingGlobal && gestureTarget === targetNode.visualGroup;
+
         if (!isDraggingThis) {
-          const spinSpeed = isOrbital ? 0.05 : 0.15;
-          targetNode.planetModel.rotation.y += spinSpeed * safeDt;
+          const cel          = targetNode.celestial;
+          const isSatellite  = !!cel.orbitTarget;         // punya parent planet
+          const isGalaxy     = cel.id === 'bimasakti';    // galaksi — tidak berputar
+
+          let spinSpeed = 0; // default: diam
+
+          if (isGalaxy) {
+            spinSpeed = 0;                     // bimasakti tidak berotasi
+          } else if (isSatellite) {
+            spinSpeed = isOrbital ? 0.05 : 0; // satelit: diam kecuali saat orbital aktif
+          } else {
+            spinSpeed = 0.15;                  // planet / bintang / eksoplanet: selalu spin
+          }
+
+          if (spinSpeed > 0) {
+            targetNode.planetModel.rotation.y += spinSpeed * safeDt;
+          }
         }
       }
     }
