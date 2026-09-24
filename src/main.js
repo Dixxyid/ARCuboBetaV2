@@ -676,16 +676,28 @@ class AppBootstrapper {
           }
         });
 
-        // Buat spinGroup untuk rotasi aksial yang sempurna dan
-        // angkat sedikit agar objek melayang persis di atas permukaan kartu
+        // Buat spinGroup untuk rotasi aksial yang sempurna
         const spinGroup = new THREE.Group();
-        const displaySize = celestial.displaySize ?? 0.15;
-        // Posisi Y = radius (setengah displaySize) + margin tipis 2cm
-        spinGroup.position.y = (displaySize / 2) + 0.02; 
         
+        // Untuk menghitung posisi Y yang presisi agar tepat di atas kartu,
+        // kita ukur bounding box model setelah dirotasi.
+        // Gunakan parent sementara di origin agar hasil setFromObject murni lokal.
+        const tempGroup = new THREE.Group();
+        tempGroup.add(model);
+        tempGroup.updateMatrixWorld(true);
+        
+        const box = new THREE.Box3().setFromObject(tempGroup);
+        const bottomY = box.min.y; // Titik paling bawah model
+        
+        // Kembalikan model ke spinGroup
         spinGroup.add(model);
+        
+        // Posisi Y diangkat sebesar jarak titik terendah ke tengah, plus margin 2cm
+        spinGroup.position.y = -bottomY + 0.02; 
+        
         targetNode.visualGroup.add(spinGroup);
-        targetNode.planetModel = spinGroup; // Render loop akan merotasi spinGroup
+        targetNode.planetModel = spinGroup; // Digunakan secara umum
+        targetNode.spinTarget  = model;     // Referensi khusus untuk rotasi aksial (kiri-kanan)
         
         targetNode.modelReady = true; // Flag: model sudah siap tampil
         console.log(`[AstroAR] ✓ Model "${celestial.name}" siap.`);
@@ -1117,7 +1129,11 @@ class AppBootstrapper {
           }
 
           if (spinSpeed > 0) {
-            targetNode.planetModel.rotation.y += spinSpeed * safeDt;
+            if (targetNode.spinTarget) {
+              targetNode.spinTarget.rotation.y += spinSpeed * safeDt; // Rotasi di sumbu lokal (kiri-kanan)
+            } else {
+              targetNode.planetModel.rotation.y += spinSpeed * safeDt; // Fallback
+            }
           }
         }
       }
